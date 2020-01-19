@@ -1,0 +1,14 @@
+{
+  "name": "egg_roll",
+  "version": "1.0.0",
+  "description": "death roll discord bot",
+  "main": "index.js",
+  "license": "MIT",
+  "private": true,
+  "dependencies": {
+    "discord.js": "^11.5.1",
+    "sequelize": "^5.21.3",
+    "sqlite3": "^4.1.1",
+    "winston": "^3.2.1"
+  }
+}
