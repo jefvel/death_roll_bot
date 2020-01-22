@@ -7,7 +7,6 @@ const Discord = require("discord.js");
 
 const Database = require('./database.js');
 
-const db = new Database();
 
 const fs = require('fs');
 
@@ -34,20 +33,22 @@ function updateStatus(stat) {
 
 let eggTicker = null;
 
+let db = null;
 client.on("ready", () => {
     // This event will run if the bot starts, and logs in, successfully.
     console.log(`Bot has started, with ${client.users.size} users, in ${client.channels.size} channels of ${client.guilds.size} guilds.`);
     // Example of changing the bot's playing game to something useful. `client.user` is what the
     // docs refer to as the "ClientUser".
     updateStatus();
+
+    db = new Database(client);
     db.sync();
 
     const amount = 5;
 
     eggTicker = setInterval(() => {
       db.giveEggsToEveryone(amount);
-      updateStatus(`Gave ${amount} ${currency} to everyone`);
-      setTimeout(updateStatus, 5000);
+      tempStatus(`Gave ${amount} ${currency} to everyone`);
     }, 60 * 1000);
 });
 
@@ -63,10 +64,21 @@ client.on("guildDelete", guild => {
     updateStatus();
 });
 
+let tempStatusTimeout = null;
+function tempStatus(status) {
+  updateStatus(status);
+  if (tempStatusTimeout != null) {
+    clearTimeout(tempStatusTimeout);
+  }
+  tempStatusTimeout = setTimeout(() => {
+    tempStatusTimeout = null;
+    updateStatus();
+  }, 5000);
+}
+
 const dice = '🎲';
 const checkMark = '✔️';
 const currency = 'Ägg';
-
 
 /**
 * runningGames contain GameRooms, with the channel ID as key
@@ -112,8 +124,11 @@ class GameRoom {
   autoRollTimer = null;
   gameCompleted = false;
 
-  constructor(channel, rollAmount, bet) {
+  gameCreator = null;
+
+  constructor(channel, rollAmount, bet, gameCreator) {
     this.players = [];
+    this.gameCreator = gameCreator;
     this.channel = channel;
     this.rollAmount = rollAmount;
     this.bet = bet;
@@ -149,6 +164,10 @@ class GameRoom {
 
     if (reacts != null) {
         users = reacts.users.filter(user => { return !user.bot; }).array();
+    }
+
+    if (users.find(u => u.id == this.gameCreator.id) == null) {
+      users.push(this.gameCreator);
     }
 
     if (users.length > this.userQueue.length) {
@@ -263,7 +282,7 @@ class GameRoom {
 
   async placeBets() {
     for (let player of this.players) {
-      const bet = await db.withdraw(player.id, this.bet);
+      const bet = await db.withdraw(player.user, this.bet);
       if (bet == 0) {
         player.eliminated = true;
       }
@@ -276,7 +295,7 @@ class GameRoom {
 
   cancelGame() {
     for (let player of this.players) {
-      db.deposit(player.id, player.bet);
+      db.deposit(player.user, player.bet);
     }
   }
 
@@ -295,7 +314,7 @@ class GameRoom {
       loserCount --;
       totalPot -= amountCanWin;
 
-      db.deposit(player.id, amountCanWin);
+      db.deposit(player.user, amountCanWin);
 
       console.log(`Paid :egg:${amountCanWin} ${currency} to ${player.user.username}`);
       let msg = `Paid :egg:${amountCanWin} ${currency} to ${player.user.username}`;
@@ -530,19 +549,19 @@ client.on("message", async message => {
     if (roll <= 1 || bet <= 0) {
       message.reply('To start the game, type `' + config.prefix + 'roll [roll amount] [bet amount (default: 10)]`')
     } else {
-      const userInfo = await db.getUserById(message.author);
+      const userInfo = await db.getUser(message.author);
 
       // User can't bet more than he owns
       if (bet > userInfo.currency) {
         bet = userInfo.currency;
       }
 
-      runningGames[message.channel.id] = new GameRoom(message.channel, roll, bet);
+      runningGames[message.channel.id] = new GameRoom(message.channel, roll, bet, message.author);
     }
   }
 
   if (command === 'stats') {
-    const info = await db.getUserById(message.author);
+    const info = await db.getUser(message.author);
     const kd = info.losses == 0 ? ':star::star::star:' : (info.wins / info.losses).toFixed(2);
     const reply = `you have :egg:**${info.currency}** ${currency}, **${info.wins}** wins and **${info.losses}** losses. That's a W/L ratio of **${kd}**`;
     message.reply(reply);
@@ -550,6 +569,12 @@ client.on("message", async message => {
 
   if (command === 'help') {
     message.reply(helpText);
+  }
+
+  if (command === 'top') {
+    const users = await db.getTop10Players();
+    const userString = users.map((u, index) => `${index + 1}. ${u.username}, :egg:${u.currency} ${currency}`).join('\n');
+    message.reply(`\n**Top 10 Players**\n${userString}\n`);
   }
 });
 

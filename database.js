@@ -34,21 +34,44 @@ const Stats = sequelize.define('stats', {
   },
 });
 
+/** A Town is a server */
+const Towns = sequelize.define('towns', {
+  id: {
+    type: Sequelize.STRING,
+    unique: true,
+    primaryKey: true,
+  },
+  name: {
+    type: Sequelize.STRING,
+    unique: false,
+  },
+  currency: {
+    type: Sequelize.INTEGER,
+    defaultValue: 0,
+    min: 0,
+  }
+});
+
 class Database {
-  constructor() {
+  discord = null;
+  constructor(discordClient) {
+    this.discord = discordClient;
   }
   sync() {
-    return Stats.sync();
+    return Promise.all([
+      Stats.sync(),
+      Towns.sync(),
+    ]);
   }
 
-  async createUserById(id, username) {
-    const user = await Stats.create({ id, username });
+  async createUser(user) {
+    const usr = await Stats.create({ id: user.id, username: user.username });
     return {
-      id: user.id,
-      currency: user.currency,
-      wins: user.wins,
-      losses: user.losses,
-      username: user.username,
+      id: usr.id,
+      currency: usr.currency,
+      wins: usr.wins,
+      losses: usr.losses,
+      username: usr.username,
     };
   }
 
@@ -72,8 +95,11 @@ class Database {
    * @param {amount to withdraw} amount 
    * @returns {amount withdrawn}
    */
-  async withdraw(id, amount) {
-    const user = await Stats.findOne({ where: { id } });
+  async withdraw(user, amount) {
+    let usr = await Stats.findOne({ where: { id: user.id } });
+    if (!usr) {
+      usr = await this.createUser(user);
+    }
     if (user) {
       if (user.currency < amount) {
         amount = user.currency;
@@ -85,20 +111,54 @@ class Database {
     return amount;
   }
 
-  async deposit(id, amount) {
-    const user = await Stats.findOne({ where: { id } });
-    if (user) {
-      return await Stats.update({currency: user.currency + amount}, { where: { id } });
+  async deposit(user, amount) {
+    const usr = await Stats.findOne({ where: { id: user.id } });
+    if (usr) {
+      return await Stats.update({currency: usr.currency + amount}, { where: { id: user.id } });
     }
+  }
+
+  async getTop10Players() {
+    const users = await Stats.findAll({
+      where: {},
+      order: [
+        [ 'currency', 'DESC' ],
+      ],
+      attributes: [ 'username', 'currency', 'id' ],
+      limit: 10,
+    });
+
+    const result = Promise.all(users.map(async (u) => {
+      if (u.username === null) {
+        const user = await this.discord.fetchUser(u.id);
+        u.username = user.username;
+        this.setUsername(u.id, u.username);
+      }
+
+      return {
+        username: u.username,
+        currency: u.currency,
+      };
+    }));
+
+    return await result;
+  }
+
+  async setUsername(id, username) {
+      return await Stats.update({username: username}, { where: { id } });
+
   }
 
   async giveEggsToEveryone(amount) {
     return await Stats.update({ currency: sequelize.literal(`currency + ${amount}`) }, { where: {} });
   }
 
-  async getUserById(user) {
+  async getUser(user) {
     const player = await Stats.findOne({ where: { id : user.id } });
     if (player) {
+      if (!player.username) {
+        player.username = user.username;
+      }
       return {
         id: player.id,
         username: player.username,
@@ -107,7 +167,7 @@ class Database {
         losses: player.losses,
       };
     } else {
-      return await this.createUserById(user.id, user.username);
+      return await this.createUser(user);
     }
   }
 }
