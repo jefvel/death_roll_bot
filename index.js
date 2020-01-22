@@ -9,6 +9,10 @@ const Database = require('./database.js');
 
 const db = new Database();
 
+const fs = require('fs');
+
+const helpText = fs.readFileSync('./help.txt', 'utf-8');
+
 
 // This is your client. Some people call it `bot`, some people call it `self`,
 // some might call it `cootchie`. Either way, when you see `client.something`, or `bot.something`,
@@ -20,9 +24,15 @@ const config = require("./config.json");
 // config.token contains the bot's token
 // config.prefix contains the message prefix.
 
-function updateStatus() {
-  client.user.setActivity(`I am death roll`);
+function updateStatus(stat) {
+  if (stat) {
+    client.user.setActivity(stat);
+  } else {
+    client.user.setActivity(`type ${config.prefix}help for info`);
+  }
 }
+
+let eggTicker = null;
 
 client.on("ready", () => {
     // This event will run if the bot starts, and logs in, successfully.
@@ -31,6 +41,14 @@ client.on("ready", () => {
     // docs refer to as the "ClientUser".
     updateStatus();
     db.sync();
+
+    const amount = 5;
+
+    eggTicker = setInterval(() => {
+      db.giveEggsToEveryone(amount);
+      updateStatus(`Gave ${amount} ${currency} to everyone`);
+      setTimeout(updateStatus, 5000);
+    }, 60 * 1000);
 });
 
 client.on("guildCreate", guild => {
@@ -47,6 +65,8 @@ client.on("guildDelete", guild => {
 
 const dice = '🎲';
 const checkMark = '✔️';
+const currency = 'Ägg';
+
 
 /**
 * runningGames contain GameRooms, with the channel ID as key
@@ -59,6 +79,9 @@ class Player {
   id = null;
   eliminated = false;
   lives = null;
+  finalPlacement = -1;
+
+  bet = 0;
 
   constructor(user) {
     this.lives = config.playerLives;
@@ -87,6 +110,7 @@ class GameRoom {
   gameFinished = false;
 
   autoRollTimer = null;
+  gameCompleted = false;
 
   constructor(channel, rollAmount, bet) {
     this.players = [];
@@ -111,7 +135,7 @@ class GameRoom {
   }
 
   getTitleText() {
-    return `>>> Playing Death Roll for **${this.rollAmount}**\n\n`;
+    return `>>> Playing Death Roll for **${this.rollAmount}**. The bet is :egg:**${this.bet}** ${currency}.\n\n`;
   }
 
   waitForPlayersTick() {
@@ -170,7 +194,7 @@ class GameRoom {
     }
   }
 
-  startGame() {
+  async startGame() {
     this.waitingForPlayers = false;
 
     if (this.userQueue.length <= 1) {
@@ -192,6 +216,15 @@ class GameRoom {
     this.players = this.userQueue.map(user => {
       return new Player(user);
     });
+
+    await this.placeBets();
+
+    if (this.players.length <= 1) {
+      this.cancelGame();
+      console.log(`Too few players with ${currency} to bet`);
+      this.gameMessage.edit(`${this.getTitleText()} Too few players with ${currency}. Cancelling game.`);
+      return;
+    }
 
     this.refreshDisplay();
     this.listenToPlayers();
@@ -228,6 +261,60 @@ class GameRoom {
     this.gameMessage.clearReactions();
   }
 
+  async placeBets() {
+    for (let player of this.players) {
+      const bet = await db.withdraw(player.id, this.bet);
+      if (bet == 0) {
+        player.eliminated = true;
+      }
+
+      player.bet = bet;
+    }
+
+    this.players = this.players.filter(p => !p.eliminated);
+  }
+
+  cancelGame() {
+    for (let player of this.players) {
+      db.deposit(player.id, player.bet);
+    }
+  }
+
+  doleOutEggs() {
+    const losingPlayers = this.players.filter(p => p.eliminated);
+    let totalPot = 0;
+    for (let p of this.players) {
+      totalPot += p.bet;
+    }
+
+    let loserCount = losingPlayers.length + 1;
+    const winningPlayerQueue = this.players;
+    const winningPlayer = this.players[0];
+    for (let player of winningPlayerQueue) {
+      let amountCanWin = Math.min(player.bet * loserCount, totalPot);
+      loserCount --;
+      totalPot -= amountCanWin;
+
+      db.deposit(player.id, amountCanWin);
+
+      console.log(`Paid :egg:${amountCanWin} ${currency} to ${player.user.username}`);
+      let msg = `Paid :egg:${amountCanWin} ${currency} to ${player.user.username}`;
+      if (winningPlayer == player) {
+        msg += ` (**Winner**)`;
+      }
+      this.eventLog.push(msg);
+      
+      if (totalPot <= 0) {
+        break;
+      }
+    }
+  }
+
+  gameWon() {
+    this.players = this.players.sort((a, b) => a.finalPlacement - b.finalPlacement);
+    this.doleOutEggs();
+  }
+
   getLatestLogs() {
     var c = Math.min(3, this.eventLog.length);
     var logsMsg = '\n----------\n';
@@ -247,7 +334,7 @@ class GameRoom {
     if (this.gameFinished) {
       return '';
     }
-    return `\nCurrent Roll: ${this.currentMaxRoll}`;
+    return `\nCurrent Roll: **${this.currentMaxRoll}**`;
   }
 
   refreshDisplay() {
@@ -263,11 +350,21 @@ class GameRoom {
     var player = this.players[this.currentPlayerIndex];
     player.lives = 0;
     player.eliminated = true;
+    player.finalPlacement = this.players.filter(e => !e.eliminated).length - 1;
+
+    db.addLossToUser(player.id);
 
     let loseMessage = `, and was eliminated :skull:`;
 
     let gameFinished = this.players.filter(p => !p.eliminated).length === 1;
     let winningPlayerIndex = this.players.findIndex(e => !e.eliminated);
+
+    if (gameFinished) {
+      this.gameCompleted = true;
+      const winningPlayer = this.players[winningPlayerIndex];
+      db.addWinToUser(winningPlayer.id);
+    }
+
     let winMessage = gameFinished ? `\n**${this.players[winningPlayerIndex].username}** won!` : '';
 
     if (winMessage !== '') {
@@ -278,7 +375,6 @@ class GameRoom {
   }
 
   doRoll(automated) {
-    let playerIndex = this.currentPlayerIndex;
     let player = this.players[this.currentPlayerIndex];
 
     let roll = 1 + Math.floor((Math.random() * this.currentMaxRoll));
@@ -337,6 +433,10 @@ class GameRoom {
       this.currentMaxRoll = roll;
     }
 
+    if (this.gameCompleted) {
+      this.gameWon();
+    }
+
     this.refreshDisplay();
 
     if (!this.gameFinished) {
@@ -348,11 +448,17 @@ class GameRoom {
     const onlyOneAlive = this.players.filter(e => !e.eliminated).length == 1;
 
     let userOrder = this.players.map((u, index) => {
-      let info = `**${index + 1}**: *${u.username}* `;
-
-      for (var i = 0; i < u.lives; i ++) {
-        info += ':heart:';
+      let hearts = '';
+      for (var i = 0; i < config.playerLives; i ++) {
+        if (i < u.lives) {
+          hearts += ':heart:';
+        } else {
+          hearts += ':black_heart:';
+        }
       }
+
+      let spaces = index < 9 ? ' ' : '';
+      let info = `**\`${spaces}${(index + 1)}\`**: ${hearts} *${u.username}* `;
 
       if (index == this.currentPlayerIndex) {
         if (onlyOneAlive) {
@@ -419,21 +525,32 @@ client.on("message", async message => {
 
     const roll = parseInt(args[0], 10) || -1;
 
-    const bet = args.length > 1 ? parseInt(args[1], 10) || -1 : 10;
+    let bet = args.length > 1 ? parseInt(args[1], 10) || -1 : 10;
 
     if (roll <= 1 || bet <= 0) {
       message.reply('To start the game, type `' + config.prefix + 'roll [roll amount] [bet amount (default: 10)]`')
     } else {
+      const userInfo = await db.getUserById(message.author);
+
+      // User can't bet more than he owns
+      if (bet > userInfo.currency) {
+        bet = userInfo.currency;
+      }
+
       runningGames[message.channel.id] = new GameRoom(message.channel, roll, bet);
     }
   }
 
   if (command === 'stats') {
-    const info = await db.getUserById(message.author.id);
-    console.log(info);
-    message.reply(info);
+    const info = await db.getUserById(message.author);
+    const kd = info.losses == 0 ? ':star::star::star:' : (info.wins / info.losses).toFixed(2);
+    const reply = `you have :egg:**${info.currency}** ${currency}, **${info.wins}** wins and **${info.losses}** losses. That's a W/L ratio of **${kd}**`;
+    message.reply(reply);
   }
 
+  if (command === 'help') {
+    message.reply(helpText);
+  }
 });
 
 client.login(config.token);

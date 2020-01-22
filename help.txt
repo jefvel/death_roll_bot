@@ -1,0 +1,7 @@
+
+>>> This is a skill based game about betting and getting äggs (:egg:)
+
+**Available Commands**
+
+* `d.stats` - Show stats about yourself
+* `d.roll [roll amount] [bet amount]` - start a new cool roll game
