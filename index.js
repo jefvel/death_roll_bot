@@ -103,6 +103,42 @@ class Player {
   }
 }
 
+const loadingClock = [
+  ':clock12:',
+  ':clock1230:',
+  ':clock1:',
+  ':clock130:',
+  ':clock2:',
+  ':clock230:',
+
+  ':clock3:',
+  ':clock330:',
+
+  ':clock4:',
+  ':clock430:',
+
+  ':clock5:',
+  ':clock530:',
+
+  ':clock6:',
+  ':clock630:',
+
+  ':clock7:',
+  ':clock730:',
+
+  ':clock8:',
+  ':clock830:',
+
+  ':clock9:',
+  ':clock930:',
+
+  ':clock10:',
+  ':clock1030:',
+
+  ':clock11:',
+  ':clock1130:',
+];
+
 class GameRoom {
   bet = 0;
   rollAmount = 0;
@@ -115,6 +151,7 @@ class GameRoom {
   userQueue = null;
   waitingForPlayers = true;
   waitingForPlayersTimeLeft = 0;
+  waitingTick = 0;
 
   reactionCollector = null;
 
@@ -151,7 +188,7 @@ class GameRoom {
 
   getTitleText() {
     if (this.bet == 0) {
-      return `>>> Playing Death Roll for **${this.rollAmount}**. This is a **free** bet.\n\n`;
+      return `>>> Playing Death Roll for **${this.rollAmount}**. No :egg:${currency} on the line.\n\n`;
     }
     return `>>> Playing Death Roll for **${this.rollAmount}**. The bet is :egg:**${this.bet}** ${currency}.\n\n`;
   }
@@ -160,6 +197,10 @@ class GameRoom {
     const message = this.gameMessage;
 
     this.waitingForPlayersTimeLeft --;
+    this.waitingTick ++;
+    if (this.waitingTick >= loadingClock.length) {
+      this.waitingTick = 0;
+    }
 
     let collected = message.reactions;
     let reacts = collected.find(e => e.emoji.name === dice);
@@ -192,7 +233,8 @@ class GameRoom {
         userInfo += users.map((u, index) => `**${index + 1}**: *${u.username}*`).join('\n');
     }
 
-    message.edit(`${this.getTitleText()}${title}${this.waitingForPlayersTimeLeft} ${this.waitingForPlayersTimeLeft > 1 ? 'seconds' : 'second'} left\n${userInfo}`).then(msg => {
+    const clock = loadingClock[this.waitingTick];
+    message.edit(`${this.getTitleText()}${title}${clock} ${this.waitingForPlayersTimeLeft} ${this.waitingForPlayersTimeLeft > 1 ? 'seconds' : 'second'} left\n${userInfo}`).then(msg => {
         this.gameMessage = msg;
         setTimeout(this.waitForPlayersTick.bind(this), 1000);
     })
@@ -340,6 +382,7 @@ class GameRoom {
 
   gameWon() {
     this.players = this.players.sort((a, b) => a.finalPlacement - b.finalPlacement);
+    tempStatus(`${this.players[0].username} won a roll!`);
     if (this.bet > 0) {
       this.doleOutEggs();
     }
@@ -490,11 +533,15 @@ class GameRoom {
       let spaces = index < 9 ? ' ' : '';
       let info = `**\`${spaces}${(index + 1)}\`**: ${hearts} *${u.username}* `;
 
-      if (index == this.currentPlayerIndex) {
-        if (onlyOneAlive) {
-          info = `${info} :crown:`;
-        } else {
+      if (!this.gameCompleted) {
+        if (index == this.currentPlayerIndex) {
           info = `__${info}__ :point_left:`;
+        }
+      }
+
+      if (onlyOneAlive) {
+        if (!u.eliminated) {
+          info = `${info} :crown:`;
         }
       }
 
@@ -553,12 +600,12 @@ client.on("message", async message => {
       return;
     }
 
-    const roll = parseInt(args[0], 10) || -1;
+    const roll = parseInt(args[0], 10) || 100;
 
     let bet = args.length > 1 ? parseInt(args[1], 10) || -1 : 0;
 
     if (roll <= 1 || bet < 0) {
-      message.reply('To start the game, type `' + config.prefix + 'roll [roll amount] [bet amount (default: 0)]`')
+      message.reply('To start the game, type `' + config.prefix + 'roll [roll amount (default: 100)] [bet amount (default: 0)]`')
     } else {
       const userInfo = await db.getUser(message.author);
 

@@ -102,11 +102,11 @@ class Database {
     if (!usr) {
       usr = await this.createUser(user);
     }
-    if (user) {
-      if (user.currency < amount) {
-        amount = user.currency;
+    if (usr) {
+      if (usr.currency < amount) {
+        amount = usr.currency;
       }
-      await Players.update({currency: user.currency - amount}, { where: { id: user.id } });
+      await Players.update({currency: usr.currency - amount}, { where: { id: user.id } });
     } else {
       amount = 0;
     }
