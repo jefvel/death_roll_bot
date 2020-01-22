@@ -150,6 +150,9 @@ class GameRoom {
   }
 
   getTitleText() {
+    if (this.bet == 0) {
+      return `>>> Playing Death Roll for **${this.rollAmount}**. This is a **free** bet.\n\n`;
+    }
     return `>>> Playing Death Roll for **${this.rollAmount}**. The bet is :egg:**${this.bet}** ${currency}.\n\n`;
   }
 
@@ -236,7 +239,9 @@ class GameRoom {
       return new Player(user);
     });
 
-    await this.placeBets();
+    if (this.bet > 0) {
+      await this.placeBets();
+    }
 
     if (this.players.length <= 1) {
       this.cancelGame();
@@ -294,6 +299,10 @@ class GameRoom {
   }
 
   cancelGame() {
+    if (this.bet <= 0) {
+      return;
+    }
+
     for (let player of this.players) {
       db.deposit(player.user, player.bet);
     }
@@ -331,7 +340,9 @@ class GameRoom {
 
   gameWon() {
     this.players = this.players.sort((a, b) => a.finalPlacement - b.finalPlacement);
-    this.doleOutEggs();
+    if (this.bet > 0) {
+      this.doleOutEggs();
+    }
   }
 
   getLatestLogs() {
@@ -544,10 +555,10 @@ client.on("message", async message => {
 
     const roll = parseInt(args[0], 10) || -1;
 
-    let bet = args.length > 1 ? parseInt(args[1], 10) || -1 : 10;
+    let bet = args.length > 1 ? parseInt(args[1], 10) || -1 : 0;
 
-    if (roll <= 1 || bet <= 0) {
-      message.reply('To start the game, type `' + config.prefix + 'roll [roll amount] [bet amount (default: 10)]`')
+    if (roll <= 1 || bet < 0) {
+      message.reply('To start the game, type `' + config.prefix + 'roll [roll amount] [bet amount (default: 0)]`')
     } else {
       const userInfo = await db.getUser(message.author);
 
@@ -563,7 +574,10 @@ client.on("message", async message => {
   if (command === 'stats') {
     const info = await db.getUser(message.author);
     const kd = info.losses == 0 ? ':star::star::star:' : (info.wins / info.losses).toFixed(2);
-    const reply = `you have :egg:**${info.currency}** ${currency}, **${info.wins}** wins and **${info.losses}** losses. That's a W/L ratio of **${kd}**`;
+    let reply = `you have :egg:**${info.currency}** ${currency}, **${info.wins}** wins and **${info.losses}** losses. That's a W/L ratio of **${kd}**`;
+    if (!info.townId) {
+      reply += `\nYou are not a member of a town`;
+    }
     message.reply(reply);
   }
 

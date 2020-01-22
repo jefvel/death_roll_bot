@@ -9,7 +9,7 @@ const sequelize = new Sequelize('database', 'user', 'password', {
   storage: 'database.sqlite',
 });
 
-const Stats = sequelize.define('stats', {
+const Players = sequelize.define('players', {
   id: {
     type: Sequelize.STRING,
     unique: true,
@@ -52,6 +52,8 @@ const Towns = sequelize.define('towns', {
   }
 });
 
+Players.belongsTo(Towns);
+
 class Database {
   discord = null;
   constructor(discordClient) {
@@ -59,13 +61,13 @@ class Database {
   }
   sync() {
     return Promise.all([
-      Stats.sync(),
+      Players.sync(),
       Towns.sync(),
     ]);
   }
 
   async createUser(user) {
-    const usr = await Stats.create({ id: user.id, username: user.username });
+    const usr = await Players.create({ id: user.id, username: user.username });
     return {
       id: usr.id,
       currency: usr.currency,
@@ -76,14 +78,14 @@ class Database {
   }
 
   async addWinToUser(id) {
-    const user = await Stats.findOne({ where: { id } });
+    const user = await Players.findOne({ where: { id } });
     if (user) {
       user.increment('wins');
     }
   }
 
   async addLossToUser(id) {
-    const user = await Stats.findOne({ where: { id } });
+    const user = await Players.findOne({ where: { id } });
     if (user) {
       user.increment('losses');
     }
@@ -96,7 +98,7 @@ class Database {
    * @returns {amount withdrawn}
    */
   async withdraw(user, amount) {
-    let usr = await Stats.findOne({ where: { id: user.id } });
+    let usr = await Players.findOne({ where: { id: user.id } });
     if (!usr) {
       usr = await this.createUser(user);
     }
@@ -104,7 +106,7 @@ class Database {
       if (user.currency < amount) {
         amount = user.currency;
       }
-      await Stats.update({currency: user.currency - amount}, { where: { id } });
+      await Players.update({currency: user.currency - amount}, { where: { id: user.id } });
     } else {
       amount = 0;
     }
@@ -112,14 +114,14 @@ class Database {
   }
 
   async deposit(user, amount) {
-    const usr = await Stats.findOne({ where: { id: user.id } });
+    const usr = await Players.findOne({ where: { id: user.id } });
     if (usr) {
-      return await Stats.update({currency: usr.currency + amount}, { where: { id: user.id } });
+      return await Players.update({currency: usr.currency + amount}, { where: { id: user.id } });
     }
   }
 
   async getTop10Players() {
-    const users = await Stats.findAll({
+    const users = await Players.findAll({
       where: {},
       order: [
         [ 'currency', 'DESC' ],
@@ -145,16 +147,15 @@ class Database {
   }
 
   async setUsername(id, username) {
-      return await Stats.update({username: username}, { where: { id } });
-
+      return await Players.update({ username: username }, { where: { id } });
   }
 
   async giveEggsToEveryone(amount) {
-    return await Stats.update({ currency: sequelize.literal(`currency + ${amount}`) }, { where: {} });
+    return await Players.update({ currency: sequelize.literal(`currency + ${amount}`) }, { where: {} });
   }
 
   async getUser(user) {
-    const player = await Stats.findOne({ where: { id : user.id } });
+    const player = await Players.findOne({ where: { id : user.id } });
     if (player) {
       if (!player.username) {
         player.username = user.username;
@@ -165,6 +166,7 @@ class Database {
         currency: player.currency,
         wins: player.wins,
         losses: player.losses,
+        townId: player.townId,
       };
     } else {
       return await this.createUser(user);

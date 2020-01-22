@@ -8,7 +8,8 @@ _Player Specific_
 * `d.stats` - Show stats about yourself
 * `d.top` - Show top 10 players
 
-_Server Specific_
+_Town (Server) Specific_
+* `d.join` - Join the Town of the server. It is only possble to be a member of one town at a time.
 * `d.contribute [Ägg amount]` - Contribute to the current server's town eggs (Klägg). (Multiples of 1000. 1000 Ägg = 1 Klägg)
 * `d.serverstats` - Show info about the server.
 
