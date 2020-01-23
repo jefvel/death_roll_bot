@@ -66,8 +66,11 @@ class Database {
     ]);
   }
 
-  async createUser(user) {
+  async createUser(id) {
+    const user = await this.discord.fetchUser(id, true);
+
     const usr = await Players.create({ id: user.id, username: user.username });
+
     return {
       id: usr.id,
       currency: usr.currency,
@@ -100,7 +103,7 @@ class Database {
   async withdraw(user, amount) {
     let usr = await Players.findOne({ where: { id: user.id } });
     if (!usr) {
-      usr = await this.createUser(user);
+      usr = await this.createUser(user.id);
     }
     if (usr) {
       if (usr.currency < amount) {
@@ -154,10 +157,11 @@ class Database {
     return await Players.update({ currency: sequelize.literal(`currency + ${amount}`) }, { where: {} });
   }
 
-  async getUser(user) {
-    const player = await Players.findOne({ where: { id : user.id } });
+  async getUser(id, createNew) {
+    const player = await Players.findOne({ where: { id } });
     if (player) {
       if (!player.username) {
+        const user = await this.discord.fetchUser(id, true);
         player.username = user.username;
       }
       return {
@@ -168,9 +172,11 @@ class Database {
         losses: player.losses,
         townId: player.townId,
       };
-    } else {
-      return await this.createUser(user);
+    } else if (createNew) {
+      return await this.createUser(id);
     }
+
+    return null;
   }
 }
 

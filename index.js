@@ -607,7 +607,7 @@ client.on("message", async message => {
     if (roll <= 1 || bet < 0) {
       message.reply('To start the game, type `' + config.prefix + 'roll [roll amount (default: 100)] [bet amount (default: 0)]`')
     } else {
-      const userInfo = await db.getUser(message.author);
+      const userInfo = await db.getUser(message.author.id, true);
 
       // User can't bet more than he owns
       if (bet > userInfo.currency) {
@@ -619,11 +619,30 @@ client.on("message", async message => {
   }
 
   if (command === 'stats') {
-    const info = await db.getUser(message.author);
+    let id = message.author.id;
+    let checkingOther = false;
+    console.log(args[0]);
+    if (args.length == 1) {
+      id = args[0].substr('<@!'.length);
+      id = id.substr(0, id.length - 1);
+      checkingOther = true;
+    }
+
+    console.log(id);
+
+    const info = await db.getUser(id);
+
+    if (info == null) {
+      message.reply('Could not find player. Players are only visible after joining an death roll.');
+      return;
+    }
+
     const kd = info.losses == 0 ? ':star::star::star:' : (info.wins / info.losses).toFixed(2);
-    let reply = `you have :egg:**${info.currency}** ${currency}, **${info.wins}** wins and **${info.losses}** losses. That's a W/L ratio of **${kd}**`;
+    const v = !checkingOther ? 'you have' : `${info.username} has`;
+    let reply = `${v} :egg:**${info.currency}** ${currency}, **${info.wins}** wins and **${info.losses}** losses. That's a W/L ratio of **${kd}**`;
     if (!info.townId) {
-      reply += `\nYou are not a member of a town`;
+      const v = !checkingOther ? 'You are' : `${info.username} is not`;
+      reply += `\n${v} not a member of a town`;
     }
     message.reply(reply);
   }
