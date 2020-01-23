@@ -105,38 +105,38 @@ class Player {
 
 const loadingClock = [
   ':clock12:',
-  ':clock1230:',
+//':clock1230:',
   ':clock1:',
-  ':clock130:',
+//':clock130:',
   ':clock2:',
-  ':clock230:',
+//':clock230:',
 
   ':clock3:',
-  ':clock330:',
+//':clock330:',
 
   ':clock4:',
-  ':clock430:',
+//':clock430:',
 
   ':clock5:',
-  ':clock530:',
+//':clock530:',
 
   ':clock6:',
-  ':clock630:',
+//':clock630:',
 
   ':clock7:',
-  ':clock730:',
+//':clock730:',
 
   ':clock8:',
-  ':clock830:',
+//':clock830:',
 
   ':clock9:',
-  ':clock930:',
+//':clock930:',
 
   ':clock10:',
-  ':clock1030:',
+//':clock1030:',
 
   ':clock11:',
-  ':clock1130:',
+//':clock1130:',
 ];
 
 class GameRoom {
