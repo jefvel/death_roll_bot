@@ -44,11 +44,11 @@ client.on("ready", () => {
     db = new Database(client);
     db.sync();
 
-    const amount = 5;
+    const amount = 1;
 
     eggTicker = setInterval(() => {
       db.giveEggsToEveryone(amount);
-      tempStatus(`Gave ${amount} ${currency} to everyone`);
+      tempStatus(`Dropped ${amount} ${currency} in your basket`);
     }, 60 * 1000);
 });
 
@@ -77,7 +77,7 @@ function tempStatus(status) {
 }
 
 const dice = '🎲';
-const checkMark = '✔️';
+const checkMark = '✅'; //':white_check_mark:'; //'✔️';
 const currency = 'Ägg';
 
 /**
@@ -88,6 +88,7 @@ const runningGames = {};
 class Player {
   user = null;
   username = null;
+  isReady = false;
   id = null;
   eliminated = false;
   lives = null;
@@ -99,44 +100,24 @@ class Player {
     this.lives = config.playerLives;
     this.user = user;
     this.id = user.id;
+    this.isReady = false;
     this.username = user.username;
   }
 }
 
 const loadingClock = [
   ':clock12:',
-//':clock1230:',
   ':clock1:',
-//':clock130:',
   ':clock2:',
-//':clock230:',
-
   ':clock3:',
-//':clock330:',
-
   ':clock4:',
-//':clock430:',
-
   ':clock5:',
-//':clock530:',
-
   ':clock6:',
-//':clock630:',
-
   ':clock7:',
-//':clock730:',
-
   ':clock8:',
-//':clock830:',
-
   ':clock9:',
-//':clock930:',
-
   ':clock10:',
-//':clock1030:',
-
   ':clock11:',
-//':clock1130:',
 ];
 
 class GameRoom {
@@ -233,11 +214,70 @@ class GameRoom {
         userInfo += users.map((u, index) => `**${index + 1}**: *${u.username}*`).join('\n');
     }
 
-    const clock = loadingClock[this.waitingTick];
-    message.edit(`${this.getTitleText()}${title}${clock} ${this.waitingForPlayersTimeLeft} ${this.waitingForPlayersTimeLeft > 1 ? 'seconds' : 'second'} left\n${userInfo}`).then(msg => {
+    let joinInfo = '';
+    if (users.length > 1 && this.waitingForPlayersTimeLeft > 3) {
+      joinInfo = `\nClick the ${checkMark} to start the game directly`;
+
+      const readyUsers = this.getUsersByReaction(checkMark);
+      if (readyUsers) {
+        let readyCount = 0;
+        for (const user of users) {
+          if (readyUsers.find(u => u.id === user.id)) {
+            readyCount ++;
+          }
+        }
+        if (readyCount == users.length) {
+          if (this.waitingForPlayersTimeLeft > 3) {
+            this.waitingForPlayersTimeLeft = 3;
+          }
+        }
+      } else {
+        message.react(checkMark);
+      }
+    } else {
+      this.clearReactionsByType(checkMark);
+    }
+
+    if (this.waitingForPlayersTimeLeft <= 3) {
+      joinInfo = `\nStarting...`;
+    }
+
+    const titleText = this.getTitleText();
+
+    let clock = loadingClock[this.waitingTick];
+    let secondsLeft = this.waitingForPlayersTimeLeft;
+    const lastCountdown = [':zero:', ':one:', ':two:', ':three:', ':four:', ':five:', ':six:', ':seven:', ':eight:', ':nine:'];
+    if (this.waitingForPlayersTimeLeft < lastCountdown.length) {
+      clock = lastCountdown[this.waitingForPlayersTimeLeft];
+      secondsLeft = '';
+    }
+
+    const timeLeft = `${secondsLeft} ${this.waitingForPlayersTimeLeft > 1 ? 'seconds' : 'second'} left`;
+
+    message.edit(`${titleText}${title}${clock} ${timeLeft}\n${userInfo}${joinInfo}`).then(msg => {
         this.gameMessage = msg;
         setTimeout(this.waitForPlayersTick.bind(this), 1000);
     })
+  }
+
+  getUsersByReaction(reaction) {
+    let collected = this.gameMessage.reactions;
+    let reacts = collected.find(e => e.emoji.name === reaction);
+    if (reacts) {
+      let users = reacts.users;
+      let userArray = users.array();
+      return userArray || null;
+    }
+
+    return null
+  }
+
+  clearReactionsByType(reaction) {
+    let collected = this.gameMessage.reactions;
+    let reacts = collected.find(e => e.emoji.name === reaction);
+    if (reacts) {
+      reacts.remove();
+    }
   }
 
   clearUserReactions() {
@@ -295,6 +335,7 @@ class GameRoom {
     this.refreshDisplay();
     this.listenToPlayers();
     this.resetAutoRollTimer();
+    this.clearReactionsByType(checkMark);
   }
 
   resetAutoRollTimer() {
@@ -372,8 +413,9 @@ class GameRoom {
       if (winningPlayer == player) {
         msg += ` (**Winner**)`;
       }
+
       this.eventLog.push(msg);
-      
+
       if (totalPot <= 0) {
         break;
       }
@@ -593,7 +635,14 @@ client.on("message", async message => {
   const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
   const command = args.shift().toLowerCase();
 
+  console.log(`${message.author.username} entered command: \n >>> ${command} ${args.join(', ')}`);
+
   if (command === 'roll') {
+    if (message.channel instanceof Discord.DMChannel) {
+      message.reply("You can't deathroll with yourself.");
+      return;
+    }
+
     const activeGame = runningGames[message.channel.id];
     if (activeGame) {
       message.reply('There is already an active death roll on this channel');
@@ -621,19 +670,15 @@ client.on("message", async message => {
   if (command === 'stats') {
     let id = message.author.id;
     let checkingOther = false;
-    console.log(args[0]);
     if (args.length == 1) {
-      id = args[0].substr('<@!'.length);
-      id = id.substr(0, id.length - 1);
+      id = args[0].replace(/[<@!>]/g, '');
       checkingOther = true;
     }
-
-    console.log(id);
 
     const info = await db.getUser(id);
 
     if (info == null) {
-      message.reply('Could not find player. Players are only visible after joining an death roll.');
+      message.channel.send('Could not find player. Players are only visible after joining an death roll.');
       return;
     }
 
@@ -644,17 +689,51 @@ client.on("message", async message => {
       const v = !checkingOther ? 'You are' : `${info.username} is not`;
       reply += `\n${v} not a member of a town`;
     }
-    message.reply(reply);
+
+    if (checkingOther) {
+      message.channel.send(reply);
+    } else {
+      message.reply(reply);
+    }
   }
 
   if (command === 'help') {
-    message.reply(helpText);
+    message.author.send(helpText);
   }
 
   if (command === 'top') {
     const users = await db.getTop10Players();
-    const userString = users.map((u, index) => `${index + 1}. ${u.username}, :egg:${u.currency} ${currency}`).join('\n');
-    message.reply(`\n**Top 10 Players**\n${userString}\n`);
+    const userString = users.map((u, index) => `${index + 1}. ${u.username}, :egg:**${u.currency}** ${currency}`).join('\n');
+    message.channel.send(`>>> **Top 10 Players**\n${userString}\n`);
+  }
+
+  if (command === 'collect') {
+    const res = await db.makeUserCollectCurrency(message.author.id);
+
+    setTimeout(() => { message.delete(); }, 5000);
+
+    if (res.collected === 0) {
+      message.channel.send(`You don't have any :egg:${currency} to collect. Come back later`).then((msg) => {
+        setTimeout(() => { msg.delete(); }, 5000);
+      });
+      return;
+    }
+
+    message.channel.send(`You collected :egg:**${res.collected}** ${currency}, and now own a total of :egg:**${res.currency}** ${currency}!`).then((msg) => {
+        setTimeout(() => { msg.delete(); }, 5000);
+    });
+  }
+
+  if (command === 'eat') {
+    let amount = args.length > 0 ? (parseInt(args[0], 10) || 1) : 1;
+    amount = Math.max(1, amount);
+    const user = await db.getUser(message.author.id, true);
+    if (user.currency < amount) {
+      message.reply(`You can't eat that many :egg:${currency}, you only have :egg:**${user.currency}** ${currency}`);
+      return;
+    }
+    await db.withdraw(message.author, amount);
+    message.channel.send(`${message.author} ate :egg:**${amount}** ${currency}. What a meal!`);
   }
 });
 

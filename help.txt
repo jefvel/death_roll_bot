@@ -1,16 +1,23 @@
 
 >>> This is a skill based game about betting and getting Ägg (:egg:)
 
+Every now and then I will put an :egg: into your personal basket.
+You can `d.collect` these, and invest them in various ways.
+
 **Available Commands**
 
 _Player Specific_
+* `d.collect` - Collects :egg: Ägg from your basket into your wallet
 * `d.roll [roll amount] [bet amount]` - Start a new cool roll game
-* `d.stats` - Show stats about yourself
+* `d.stats [@nick]` - Show stats about yourself, or another player
 * `d.top` - Show top 10 players
+* `d.eat [egg amount, defaults to 1, the recommended serving size]` - Eat eggs
 
 _Town (Server) Specific_
-* `d.join` - Join the Town of the server. It is only possble to be a member of one town at a time.
-* `d.contribute [Ägg amount]` - Contribute to the current server's town eggs (Klägg). (Multiples of 1000. 1000 Ägg = 1 Klägg)
+* `d.join` - Join the Town of the server. It is only possible to be a member of one town at a time.
+* `d.contribute [amount]` - Contribute to the current server's town eggs (Klägg). (Multiples of 500. 500 Ägg = 1 Klägg)
 * `d.serverstats` - Show info about the server.
 
 `Ägg Roll v0.2`
+
+__Please note that this is an alpha and your :egg:Ägg might get deleted__

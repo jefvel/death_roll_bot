@@ -1,5 +1,6 @@
 
 const Sequelize = require('sequelize');
+const Op = Sequelize.Op;
 
 const sequelize = new Sequelize('database', 'user', 'password', {
   host: 'localhost',
@@ -20,6 +21,11 @@ const Players = sequelize.define('players', {
   currency: {
     type: Sequelize.INTEGER,
     defaultValue: 100,
+    allowNull: false,
+  },
+  basket: {
+    type: Sequelize.INTEGER,
+    defaultValue: 0,
     allowNull: false,
   },
   wins: {
@@ -77,6 +83,8 @@ class Database {
       wins: usr.wins,
       losses: usr.losses,
       username: usr.username,
+      townId: usr.townId,
+      basket: usr.basket,
     };
   }
 
@@ -154,7 +162,39 @@ class Database {
   }
 
   async giveEggsToEveryone(amount) {
-    return await Players.update({ currency: sequelize.literal(`currency + ${amount}`) }, { where: {} });
+    return await Players.update(
+      { basket: sequelize.literal(`basket + 1`) },
+      {
+        where: {
+          basket: {
+            [Op.lte]: 4320
+          },
+        }
+      }
+    );
+  }
+
+  async makeUserCollectCurrency(id) {
+    const user = await this.getUser(id, true);
+    if (user) {
+      const collectAmount = user.basket;
+      const total = user.currency + user.basket;
+
+      const result = await Players.update(
+        {
+          currency: sequelize.literal(`currency + ${collectAmount}`),
+          basket: sequelize.literal(`basket - ${collectAmount}`),
+        },
+        {
+          where: { id },
+        }
+      );
+
+      return {
+        currency: total,
+        collected: collectAmount,
+      }
+    }
   }
 
   async getUser(id, createNew) {
@@ -171,6 +211,7 @@ class Database {
         wins: player.wins,
         losses: player.losses,
         townId: player.townId,
+        basket: player.basket,
       };
     } else if (createNew) {
       return await this.createUser(id);
