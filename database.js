@@ -88,10 +88,14 @@ class Database {
     };
   }
 
-  async addWinToUser(id) {
+  async addWinToUser(id, amount) {
+    if (amount === undefined || amount === null) {
+      amount = 1;
+    }
+
     const user = await Players.findOne({ where: { id } });
     if (user) {
-      user.increment('wins');
+      user.increment('wins', { by: amount });
     }
   }
 

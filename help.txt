@@ -8,7 +8,7 @@ You can `d.collect` these, and invest them in various ways.
 
 _Player Specific_
 * `d.collect` - Collects :egg: Ägg from your basket into your wallet
-* `d.roll [roll amount] [bet amount]` - Start a new cool roll game
+* `d.roll [roll amount] [bet amount in eggs, a percentage (25%), or all]` - Start a new cool roll game
 * `d.stats [@nick]` - Show stats about yourself, or another player
 * `d.top` - Show top 10 players
 * `d.eat [egg amount, defaults to 1, the recommended serving size]` - Eat eggs

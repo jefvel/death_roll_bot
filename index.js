@@ -477,7 +477,7 @@ class GameRoom {
     if (gameFinished) {
       this.gameCompleted = true;
       const winningPlayer = this.players[winningPlayerIndex];
-      db.addWinToUser(winningPlayer.id);
+      db.addWinToUser(winningPlayer.id, this.players.length - 1);
     }
 
     let winMessage = gameFinished ? `\n**${this.players[winningPlayerIndex].username}** won!` : '';
@@ -624,6 +624,17 @@ client.on("message", async message => {
   // and not get into a spam loop (we call that "botception").
   if (message.author.bot) return;
 
+  if (message.content.toLowerCase().indexOf(' ree ') >= 0) {
+    const userInfo = await db.getUser(message.author.id);
+    if (userInfo) {
+      message.channel.send('ree penalty, -1 :egg:');
+      console.log(`${message.author.username} got a ree penalty.`);
+      if (userInfo && userInfo.currency > 0) {
+        db.withdraw(userInfo, 1);
+      }
+    }
+  }
+
   // Also good practice to ignore any message that does not start with our prefix,
   // which is set in the configuration file.
   if (message.content.toLowerCase().indexOf(config.prefix) !== 0) return;
@@ -653,15 +664,35 @@ client.on("message", async message => {
 
     let bet = args.length > 1 ? parseInt(args[1], 10) || -1 : 0;
 
+    let percentage = false;
+
+    if (args.length > 1) {
+      let b = args[1];
+      if (b === 'all' || b === 'allin' || b === 'max') {
+        bet = Number.MAX_SAFE_INTEGER;
+      }
+      if (b === 'half') {
+        b = '50%';
+        bet = 50;
+      }
+      if (b.endsWith('%')) {
+        percentage = true;
+      }
+    }
+
     if (roll <= 1 || bet < 0) {
       message.reply('To start the game, type `' + config.prefix + 'roll [roll amount (default: 100)] [bet amount (default: 0)]`')
     } else {
       const userInfo = await db.getUser(message.author.id, true);
 
       // User can't bet more than he owns
-      if (bet > userInfo.currency) {
+      if (percentage) {
+        bet = Math.max(0, Math.min(1, bet / 100.0));
+        bet = Math.floor(userInfo.currency * bet);
+      } else if (bet > userInfo.currency) {
         bet = userInfo.currency;
       }
+
 
       runningGames[message.channel.id] = new GameRoom(message.channel, roll, bet, message.author);
     }
