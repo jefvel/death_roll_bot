@@ -10,26 +10,17 @@ const Discord = require('discord.js');
 
 const Database = require('./database.js');
 const ChickenSpawner = require('./chickenspawner.js');
-
-
-const fs = require('fs');
-
-const helpText = fs.readFileSync('./help.txt', 'utf-8');
-
-const statsKeys = {
-  biggestRollDeath: 'BIGGEST_ROLL_DEATH',
-  biggestSuddenEgg: 'BIGGEST_SUDDEN_EGG',
-  biggestMeal: 'BIGGEST_MEAL',
-  longestGame: 'LONGEST_GAME',
-  longestRollStreak: 'LONGEST_ROLL_STREAK',
-  biggestPot: 'BIGGEST_POT',
-};
+const Towns = require('./towns.js');
+const Items = require('./items.js');
+const Stats = require('./stats.js');
+const Game = require('./game.js');
+const Eggs = require('./eggs.js');
+const DeathRoll = require('./deathroll.js');
 
 const numbers = [
   'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen',
   'fifteen', 'sixteen', 'seventeen',
 ];
-
 
 // This is your client. Some people call it `bot`, some people call it `self`,
 // some might call it `cootchie`. Either way, when you see `client.something`, or `bot.something`,
@@ -49,27 +40,57 @@ function updateStatus(stat) {
   }
 }
 
-let eggTicker = null;
-
 let db = null;
 let chickens = null;
+let towns = null;
+let items = null;
+let stats = null;
+let eggs = null;
+let game = null;
+let deathRoll = null;
+
 client.on("ready", () => {
-    // This event will run if the bot starts, and logs in, successfully.
     console.log(`Bot has started, with ${client.users.size} users, in ${client.channels.size} channels of ${client.guilds.size} guilds.`);
-    // Example of changing the bot's playing game to something useful. `client.user` is what the
-    // docs refer to as the "ClientUser".
+
     updateStatus();
 
     db = new Database(client);
-    db.sync().then(() => {
-      chickens = new ChickenSpawner(client, db);
-      const amount = 1;
-      eggTicker = setInterval(() => {
-        db.giveEggsToEveryone(amount);
-        tempStatus(`Dropped ${amount} ${currency} in your basket`);
-      }, 60 * 1000);
+    game = new Game(db, client);
+
+    towns = new Towns(db, client, game);
+    stats = new Stats(db, client, game);
+    items = new Items(db, client, game);
+
+    Promise.all([
+      db.sync(),
+      towns.sync(),
+      stats.sync(),
+      items.sync(),
+    ]).then(async () => {
+      chickens = new ChickenSpawner(client, db, game);
+      eggs = new Eggs(game, client);
+      deathRoll = new DeathRoll(game);
+
+      require('./commands/secret').registerCommands(game);
+
+      game.config = config;
+      game.deathRoll = deathRoll;
+      game.eggs = eggs;
+      game.stats = stats;
+      game.towns = towns;
+      game.items = items;
+      game.chickens = chickens;
+
+      registerCommands(game);
+
+      game.inited = true;
+
     });
 });
+
+function registerCommands(game) {
+  game.registerCommand('help', require('./commands/help'));
+}
 
 client.on("guildCreate", guild => {
     // This event triggers when the bot joins a guild.
@@ -96,7 +117,7 @@ function tempStatus(status) {
 }
 
 const dice = '🎲';
-const checkMark = '✅'; //':white_check_mark:'; //'✔️';
+const checkMark = '✅';
 const currency = 'Ägg';
 
 /**
@@ -363,8 +384,8 @@ class GameRoom {
 
     pot *= this.players.length;
 
-    db.updateStatIfHigher(
-      statsKeys.biggestPot,
+    stats.updateStatIfHigher(
+      stats.statsKeys.biggestPot,
       pot,
       `:eggplant: Biggest Bet`, `**${this.gameCreator.username}** hosted a game in which the winner will get at least :egg:**${pot}**!`,
     ).then(record => {
@@ -576,8 +597,8 @@ class GameRoom {
     } else {
       if (this.sameRollStreak > 0) {
         const playerNames = this.players.filter(p => !p.eliminated).map(p => p.username).join(', ');
-        db.updateStatIfHigher(
-          statsKeys.longestRollStreak,
+        stats.updateStatIfHigher(
+          stats.statsKeys.longestRollStreak,
           this.sameRollStreak,
           `:game_die: Longest Roll Streak`, `**${playerNames}** rolled **${this.currentMaxRoll}** **${numbers[this.sameRollStreak + 1]}** times in a row!`,
         ).then(record => {
@@ -591,6 +612,19 @@ class GameRoom {
 
     let additional = '';
 
+    let eventType = 'PLAYER_ROLL';
+    if (automated) {
+      eventType = 'AUTOMATED_ROLL';
+    }
+
+    game.dispatchEvent({
+      type: eventType,
+      channel: this.channel,
+      message: this.gameMessage,
+      user: player.user,
+      roll: modulatedRoll,
+    });
+
     if (modulatedRoll === 69) {
       additional = ', nice.';
     }
@@ -600,8 +634,8 @@ class GameRoom {
       killMessage = this.killCurrentPlayer();
 
       if (!automated) {
-        db.updateStatIfHigher(
-          statsKeys.biggestRollDeath,
+        stats.updateStatIfHigher(
+          stats.statsKeys.biggestRollDeath,
           this.currentMaxRoll,
           `:skull: Biggest Roll of Death`, `**${player.username}** rolled **1** out of **${this.currentMaxRoll}**!`
         ).then(record => {
@@ -613,8 +647,8 @@ class GameRoom {
     }
 
     if (!automated && modulatedRoll === 2) {
-      db.updateStatIfHigher(
-        statsKeys.biggestSuddenEgg,
+      stats.updateStatIfHigher(
+        stats.statsKeys.biggestSuddenEgg,
         this.currentMaxRoll,
         `:100: Biggest Sudden Ägg`, `**${player.username}** rolled **2** out of **${this.currentMaxRoll}**!`
       ).then(record => {
@@ -729,25 +763,20 @@ class GameRoom {
   }
 }
 
+
 client.on("message", async message => {
-  // This event will run on every single message received, from any channel or DM.
-
-  // It's good practice to ignore other bots. This also makes your bot ignore itself
-  // and not get into a spam loop (we call that "botception").
   if (message.author.bot) return;
-
-  // Also good practice to ignore any message that does not start with our prefix,
-  // which is set in the configuration file.
   if (message.content.toLowerCase().indexOf(config.prefix) !== 0) return;
 
-  // Here we separate our "command" name, and our "arguments" for the command.
-  // e.g. if we have the message "+say Is this the real life?" , we'll get the following:
-  // command = say
-  // args = ["Is", "this", "the", "real", "life?"]
   const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
+
   const command = args.shift().toLowerCase();
 
   console.log(`${message.author.username} entered command: \n >>> ${command} ${args.join(', ')}`);
+
+  if (game !== null && game.inited) {
+    game.runCommand(command, args, message);
+  }
 
   if (command === 'roll') {
     if (message.channel instanceof Discord.DMChannel) {
@@ -799,134 +828,8 @@ client.on("message", async message => {
         bet = userInfo.currency;
       }
 
-
       runningGames[message.channel.id] = new GameRoom(message.channel, roll, bet, message.author, required);
     }
-  }
-
-  if (command === 'stats') {
-    let id = message.author.id;
-    let checkingOther = false;
-    if (args.length == 1) {
-      id = args[0].replace(/[<@!>]/g, '');
-      checkingOther = true;
-    }
-
-    const info = await db.getUser(id);
-
-    if (info == null) {
-      message.channel.send('Could not find player. Players are only visible after joining an death roll.');
-      return;
-    }
-
-    const kd = info.losses == 0 ? ':star::star::star:' : (info.wins / info.losses).toFixed(2);
-    const v = !checkingOther ? 'you have' : `${info.username} has`;
-    let reply = `${v} :egg:**${info.currency}** ${currency}, **${info.wins}** wins and **${info.losses}** losses. That's a W/L ratio of **${kd}**`;
-    if (!info.townId) {
-      const v = !checkingOther ? 'You are' : `${info.username} is not`;
-      reply += `\n${v} not a member of a town`;
-    }
-
-    if (info.chickenCount > 0) {
-      const v = !checkingOther ? 'You have' : `${info.username} has`;
-      reply += `\n${v} **${info.chickenCount}** :baby_chick: chicken${info.chickenCount > 1 ? 's': ''}`;
-    }
-
-    if (checkingOther) {
-      message.channel.send(reply);
-    } else {
-      message.reply(reply);
-    }
-  }
-
-  if (command === 'help') {
-    message.author.send(helpText);
-    return;
-  }
-
-  if (command === 'top') {
-    const playerCount = await db.getPlayerCount();
-    const pageSize = 20;
-    const totalPages = Math.floor(playerCount / pageSize) + 1;
-    let page = args.length > 0 ? parseInt(args[0]) - 1 : 0;
-    if (page < 0) {
-      page = 0;
-    }
-
-    if (page >= totalPages - 1) {
-      page = totalPages - 1;
-    }
-
-    if (isNaN(page)) {
-      return;
-    }
-
-    const users = await db.getTop10Players(pageSize, page);
-    const userString = users.map((u, index) => `${pageSize * page + index + 1}. ${u.username}, :egg:**${u.currency}** ${currency}`).join('\n');
-    const pageInfo = `\nPage **${page + 1}** of **${totalPages}**. Player count: **${playerCount}**\n`;
-
-    message.channel.send(`>>> **Top Players**\n${userString}\n${pageInfo}`);
-  }
-
-  if (command === 'collect') {
-    const res = await db.makeUserCollectCurrency(message.author.id);
-
-    const isDM = (message.channel instanceof Discord.DMChannel);
-
-    if (!isDM) {
-      setTimeout(() => { message.delete(); }, 5000);
-    }
-
-    if (res.collected === 0) {
-      message.reply(`You don't have any :egg:${currency} to collect. Come back later`).then((msg) => {
-        if (!isDM) {
-          setTimeout(() => { msg.delete(); }, 5000);
-        }
-      });
-      return;
-    }
-
-    message.reply(`You collected :egg:**${res.collected}** ${currency}, and now own a total of :egg:**${res.currency}** ${currency}!`).then((msg) => {
-      if (!isDM) {
-        setTimeout(() => { msg.delete(); }, 5000);
-      }
-    });
-  }
-
-  if (command === 'eat') {
-    let amount = args.length > 0 ? (parseInt(args[0], 10) || 1) : 1;
-    amount = Math.max(1, amount);
-
-    const user = await db.getUser(message.author.id, true);
-    if (user.currency < amount) {
-      message.reply(`You can't eat that many :egg:${currency}, you only have :egg:**${user.currency}** ${currency}`);
-      return;
-    }
-
-    await db.withdraw(message.author, amount);
-
-    message.channel.send(`${message.author} ate :egg:**${amount}** ${currency}. What a meal!`);
-
-    const a = Math.min(amount, Math.floor(config.chickenSpawnChance / (Math.random() / amount)));
-
-    if (a > 0) {
-      chickens.giveChickensToUser(message.author, message.channel, a);
-    }
-
-    const record = await db.updateStatIfHigher(statsKeys.biggestMeal, amount, `:cooking: Biggest Meal`, `**${user.username}** ate the biggest meal: **${amount}** Ägg!`);
-    if (record.changed) {
-      broadcastNewRecord(record.stat, message.channel);
-    }
-  }
-
-  if (command === 'records') {
-    let keys = [];
-    for (const k in statsKeys) {
-      keys.push(statsKeys[k]);
-    }
-    const records = await db.listStats(keys);
-    const msg = records.map(record => `**${record.name}** - ${record.description}`).join('\n');
-    message.channel.send(`:man_bowing: **Hall of Records** :woman_bowing:\n:first_place:--------:trophy:-------:first_place:\n${msg}`);
   }
 });
 

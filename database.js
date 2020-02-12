@@ -5,12 +5,22 @@ const Op = Sequelize.Op;
 // Here we load the config.json file that contains our token and our prefix values.
 const config = require("./config.json");
 
+/*
 const sequelize = new Sequelize('database', 'user', 'password', {
   host: 'localhost',
   dialect: 'sqlite',
   logging: false,
   // SQLite only
   storage: 'database.sqlite',
+});
+*/
+
+const sequelize = new Sequelize('deathroll', 'postgres', null, {
+  host: '0.0.0.0',
+  dialect: 'postgres',
+  logging: false,
+  // SQLite only
+  //storage: 'database.sqlite',
 });
 
 const Players = sequelize.define('players', {
@@ -19,7 +29,7 @@ const Players = sequelize.define('players', {
     unique: true,
     primaryKey: true,
   },
-  description: Sequelize.TEXT,
+  title: Sequelize.TEXT,
   username: Sequelize.STRING,
   currency: {
     type: Sequelize.INTEGER,
@@ -48,59 +58,21 @@ const Players = sequelize.define('players', {
   },
 });
 
-/** A Town is a server */
-const Towns = sequelize.define('towns', {
-  id: {
-    type: Sequelize.STRING,
-    unique: true,
-    primaryKey: true,
-  },
-  name: {
-    type: Sequelize.STRING,
-    unique: false,
-  },
-  currency: {
-    type: Sequelize.INTEGER,
-    defaultValue: 0,
-    min: 0,
-  },
-  x: {
-    type: Sequelize.INTEGER,
-  },
-  y: {
-    type: Sequelize.INTEGER,
-  },
-});
-
-Players.belongsTo(Towns);
-
-const GlobalStats = sequelize.define('globalStats', {
-  id: {
-    type: Sequelize.STRING,
-    unique: true,
-    primaryKey: true,
-  },
-  value: {
-    type: Sequelize.FLOAT,
-  },
-  name: {
-    type: Sequelize.STRING,
-  },
-  description: {
-    type: Sequelize.STRING,
-  },
-});
+const alter = true;
 
 class Database {
   discord = null;
+  sequelize = sequelize;
+
+  players = Players;
+
   constructor(discordClient) {
     this.discord = discordClient;
   }
+
   sync() {
     return Promise.all([
-      Players.sync({ alter: false }),
-      Towns.sync({ alter: true }),
-      GlobalStats.sync({ alter: false }),
+      Players.sync({ alter }),
     ]);
   }
 
@@ -121,29 +93,6 @@ class Database {
     };
   }
 
-  async updateStatIfHigher(statID, statValue, statName, statDesc) {
-    let stat = await GlobalStats.findOne({ where: { id: statID }, raw: true });
-    let changed = false;
-    if (stat) {
-      if (statValue > stat.value) {
-        changed = true;
-        stat = await GlobalStats.update({ value: statValue, name: statName, description: statDesc }, { where: { id: statID }});
-        stat = await GlobalStats.findOne({ where: { id: statID }, raw: true });
-      }
-    } else {
-        changed = true;
-        stat = await GlobalStats.create({ id: statID,  value: statValue, name: statName, description: statDesc }, { raw: true });
-    }
-
-    return {
-      changed,
-      stat,
-    }
-  }
-
-  async listStats(statIds) {
-    return await GlobalStats.findAll({ where: { id: statIds }, raw: true });
-  }
 
   async addWinToUser(id, amount) {
     if (amount === undefined || amount === null) {
@@ -258,10 +207,6 @@ class Database {
         }
       }
     );
-  }
-
-  async createTown(serverID, name) {
-    const town = await Towns.create({ id: serverID, name: name });
   }
 
   async makeUserCollectCurrency(id) {

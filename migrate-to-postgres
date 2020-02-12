@@ -1,0 +1,6 @@
+LOAD DATABASE
+   FROM sqlite://./database.sqlite
+       INTO postgresql://postgres@0.0.0.0:5432/deathroll
+
+WITH include drop, create tables, quote identifiers,  create indexes, reset sequences
+             ;
