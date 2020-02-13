@@ -202,7 +202,7 @@ class Database {
       {
         where: {
           basket: {
-            [Op.lte]: 1000
+            [Op.lte]: 4000
           },
         }
       }
@@ -233,22 +233,13 @@ class Database {
   }
 
   async getUser(id, createNew) {
-    const player = await Players.findOne({ where: { id } });
+    const player = await Players.findOne({ where: { id }, raw: true });
     if (player) {
       if (!player.username) {
         const user = await this.discord.fetchUser(id, true);
         player.username = user.username;
       }
-      return {
-        id: player.id,
-        username: player.username,
-        currency: player.currency,
-        wins: player.wins,
-        losses: player.losses,
-        townId: player.townId,
-        basket: player.basket,
-        chickenCount: player.chickenCount,
-      };
+      return player;
     } else if (createNew) {
       return await this.createUser(id);
     }

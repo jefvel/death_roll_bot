@@ -1,5 +1,6 @@
-function generateUserInfoEmbed(info, items) {
+function generateUserInfoEmbed(info, items, town) {
   const kd = info.losses == 0 ? ':star::star::star:' : (info.wins / info.losses).toFixed(2);
+
   const embed = {
     title: `${info.currency} Ägg`,
     description: `**${info.wins}** Wins, **${info.losses}** Losses. That's a W/L Ratio of **${kd}**`,
@@ -15,7 +16,7 @@ function generateUserInfoEmbed(info, items) {
       {
         inline: true,
         name: ":cityscape: Town",
-        value: "Not a member of a town."
+        value: town ? `Member of the town **${town.name}**` : "Not a member of a town.",
       },
     ]
   };
@@ -60,7 +61,12 @@ async function stats({ message, args, game }) {
 
   const items = await game.items.listUserItems({ id });
 
-  const embed = generateUserInfoEmbed(info, items);
+  let town = null;
+  if (info.townId) {
+    town = await game.towns.getTown(info.townId);
+  }
+
+  const embed = generateUserInfoEmbed(info, items, town);
 
   if (checkingOther) {
     message.channel.send(embed);

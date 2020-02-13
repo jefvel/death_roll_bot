@@ -29,7 +29,7 @@ function registerCommands(game) {
     }
   });
 
-  game.addEventListener(coolListener);
+  game.addEventListener('PLAYER_ROLL', coolListener);
 }
 
 module.exports = {

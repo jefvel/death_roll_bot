@@ -17,9 +17,10 @@ _Player Specific_
 _Town (Server) Specific_
 * `d.join` - Join the Town of the server. It is only possible to be a member of one town at a time.
 * `d.contribute [amount]` - Contribute to the current server's town eggs (Klägg). (Multiples of 500. 500 Ägg = 1 Klägg)
-* `d.townstats` - Show info about the town.
+* `d.town [?townname]` - Show info about the town.
+* `d.config` - **Create a town on your server. Server admin privileges required.**
 
-`Ägg Roll v0.3`
+`Ägg Roll v0.4`
 
 __Please note that this is an alpha and your :egg:Ägg might get deleted__
 

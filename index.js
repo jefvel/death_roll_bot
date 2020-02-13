@@ -17,6 +17,8 @@ const Game = require('./game.js');
 const Eggs = require('./eggs.js');
 const DeathRoll = require('./deathroll.js');
 
+const Notifications = require('./notifications');
+
 const numbers = [
   'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen',
   'fifteen', 'sixteen', 'seventeen',
@@ -29,6 +31,7 @@ const client = new Discord.Client();
 
 // Here we load the config.json file that contains our token and our prefix values.
 const config = require("./config.json");
+const constants = require("./constants.js");
 // config.token contains the bot's token
 // config.prefix contains the message prefix.
 
@@ -85,6 +88,8 @@ client.on("ready", () => {
 
       game.inited = true;
 
+      Notifications.init(game);
+
     });
 });
 
@@ -139,7 +144,7 @@ class Player {
   bet = 0;
 
   constructor(user) {
-    this.lives = config.playerLives;
+    this.lives = constants.playerLives;
     this.user = user;
     this.id = user.id;
     this.isReady = false;
@@ -202,7 +207,7 @@ class GameRoom {
 
   startWaitingForPlayers() {
     console.log(`Waiting for players on channel ${this.channel.name}`);
-    this.waitingForPlayersTimeLeft = config.waitForPlayersTime;
+    this.waitingForPlayersTimeLeft = constants.waitForPlayersTime;
     this.players = [];
     this.userQueue = [];
     this.eventLog = [];
@@ -390,7 +395,7 @@ class GameRoom {
       `:eggplant: Biggest Bet`, `**${this.gameCreator.username}** hosted a game in which the winner will get at least :egg:**${pot}**!`,
     ).then(record => {
       if (record.changed) {
-        broadcastNewRecord(record.stat, this.channel);
+        stats.broadcastNewRecord(record.stat, this.channel);
       }
     });
 
@@ -418,7 +423,7 @@ class GameRoom {
       this.autoRollTimer = setTimeout(() => {
         this.autoRollTimer = null;
         this.doRoll(true);
-      }, config.turnTime * 1000);
+      }, constants.turnTime * 1000);
     }
   }
 
@@ -603,7 +608,7 @@ class GameRoom {
           `:game_die: Longest Roll Streak`, `**${playerNames}** rolled **${this.currentMaxRoll}** **${numbers[this.sameRollStreak + 1]}** times in a row!`,
         ).then(record => {
           if (record.changed) {
-            broadcastNewRecord(record.stat, this.channel);
+            stats.broadcastNewRecord(record.stat, this.channel);
           }
         });
       }
@@ -640,7 +645,7 @@ class GameRoom {
           `:skull: Biggest Roll of Death`, `**${player.username}** rolled **1** out of **${this.currentMaxRoll}**!`
         ).then(record => {
           if (record.changed) {
-            broadcastNewRecord(record.stat, this.channel);
+            stats.broadcastNewRecord(record.stat, this.channel);
           }
         });
       }
@@ -653,7 +658,7 @@ class GameRoom {
         `:100: Biggest Sudden Ägg`, `**${player.username}** rolled **2** out of **${this.currentMaxRoll}**!`
       ).then(record => {
         if (record.changed) {
-          broadcastNewRecord(record.stat, this.channel);
+          stats.broadcastNewRecord(record.stat, this.channel);
         }
       });
     }
@@ -706,7 +711,7 @@ class GameRoom {
 
     let userOrder = this.players.map((u, index) => {
       let hearts = '';
-      for (var i = 0; i < config.playerLives; i ++) {
+      for (var i = 0; i < constants.playerLives; i ++) {
         if (i < u.lives) {
           hearts += ':heart:';
         } else {
@@ -766,6 +771,18 @@ class GameRoom {
 
 client.on("message", async message => {
   if (message.author.bot) return;
+
+  // Ensure player exists
+  const player = await db.getUser(message.author.id, true);
+
+  if (message.channel.type === 'dm') {
+    game.dispatchEvent({
+      type: 'DIRECT_MESSAGE',
+      message,
+      player,
+    });
+  }
+
   if (message.content.toLowerCase().indexOf(config.prefix) !== 0) return;
 
   const args = message.content.slice(config.prefix.length).trim().split(/ +/g);
@@ -775,7 +792,7 @@ client.on("message", async message => {
   console.log(`${message.author.username} entered command: \n >>> ${command} ${args.join(', ')}`);
 
   if (game !== null && game.inited) {
-    game.runCommand(command, args, message);
+    game.runCommand(command, args, message, player);
   }
 
   if (command === 'roll') {
@@ -832,12 +849,6 @@ client.on("message", async message => {
     }
   }
 });
-
-function broadcastNewRecord(record, channel) {
-  const msg = `**:trumpet: New Record! :trumpet:**\n**${record.name}** - ${record.description}`;
-  channel.send(msg);
-  console.log(msg);
-}
 
 client.login(config.token);
 

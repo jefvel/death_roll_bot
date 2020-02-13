@@ -15,7 +15,7 @@ async function eat({ message, game, args }) {
 
   message.channel.send(`${message.author} ate :egg:**${amount}** ${currency}. What a meal!`);
 
-  const a = Math.min(amount, Math.floor(game.config.chickenSpawnChance / (Math.random() / amount)));
+  const a = Math.min(amount, Math.floor(game.constants.chickenSpawnChance / (Math.random() / amount)));
 
   if (a > 0) {
     chickens.giveChickensToUser(message.author, message.channel, a);
