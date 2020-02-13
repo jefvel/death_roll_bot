@@ -852,28 +852,27 @@ client.on("message", async message => {
 
 client.login(config.token);
 
-/*
 const readline = require('readline').createInterface({
   input: process.stdin,
   output: process.stdout,
 });
 
 function question() {
-  readline.question('>', (command) => {
+  readline.question('', (command) => {
     const words = command.split(' ');
     const cmd = words.shift().toLowerCase();
 
     if (cmd === 'say') {
       const msg = command.substr(4);
       if (msg.length > 0) {
+        towns.broadcastMessage(msg);
       }
     }
 
     question();
   });
 }
-*/
 
-//question();
+question();
 
 

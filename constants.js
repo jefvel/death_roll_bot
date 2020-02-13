@@ -16,5 +16,6 @@ module.exports = {
     town: 'https://cdn.discordapp.com/attachments/668497531742978100/677623504799006740/unknown.png?size=512',
     move: 'https://cdn.discordapp.com/attachments/668497531742978100/677630459034861574/unknown.png?size=512',
     join: 'https://cdn.discordapp.com/attachments/668497531742978100/677640511816990740/unknown.png?size=512',
+    surprise: 'https://cdn.discordapp.com/attachments/668497531742978100/677657923069149184/unknown.png?size=512',
   },
 };

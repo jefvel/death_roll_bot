@@ -40,7 +40,7 @@ async function join({ game, message, player }) {
 
   const { townChangeCost } = game.constants;
 
-  if (player.townID && player.currency < townChangeCost) {
+  if (player.townId && player.currency < townChangeCost) {
     message.author.send(`The moving company costs :egg:**${townChangeCost}** Ägg. You only have :egg:**${player.currency}** Ägg`)
     return;
   }

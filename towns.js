@@ -41,6 +41,7 @@ class Towns {
   }
 
   registerCommands(game) {
+    game.registerCommand('town', require('./commands/town'));
     game.registerCommand('join', require('./commands/join'));
     game.registerCommand('config', require('./commands/config'));
     game.registerCommand('contribute', require('./commands/contribute'));
@@ -92,6 +93,22 @@ class Towns {
    * broadcastMessage broadcasts a message to all registered towns.
    */
   async broadcastMessage(msg) {
+    const towns = await this.towns.findAll({ attributes: [ 'channel_id' ]}, { plain: true });
+    const embed = {
+      title: `Cool Event`,
+      description: msg,
+      thumbnail: {
+        url: this.game.constants.avatars.surprise,
+      },
+      color: 6049602,
+    };
+
+    for (const town of towns) {
+      const chan = this.discord.channels.get(town.channel_id);
+      if (chan) {
+        chan.send({ embed });
+      }
+    }
   }
 
   async getTownPopulation(serverID) {
