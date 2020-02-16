@@ -10,6 +10,7 @@ function generateUserInfoEmbed(info, items, town) {
     },
     author: {
       name: info.username,
+      url: `https://deathroll.net/player/${info.id}`,
       icon_url: "https://cdn.discordapp.com/attachments/668497531742978100/677232220900950046/unknown.png"
     },
     fields: [

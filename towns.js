@@ -122,7 +122,6 @@ class Towns {
     }
 
     const existingCoords = await this.towns.findAll({ attributes: ['x', 'y']}, { plain: true });
-    console.log(existingCoords);
 
     var found = false;
     var x = 0;

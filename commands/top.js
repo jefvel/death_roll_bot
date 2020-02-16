@@ -38,7 +38,12 @@ async function top({ command, message, args, game }) {
   }
 
   const users = await db.getTop10Players(pageSize, page);
-  const userString = users.map((u, index) => `${pageSize * page + index + 1}. ${u.username}, :egg:**${u.currency}** ${currency}`).join('\n');
+  const strL = `${playerCount}`.length;
+  const userString = users.map((u, index) => {
+    const pageStr = ('' + (pageSize * page + index + 1)).padStart(strL);
+    const cStr =`${u.currency}`.padStart(9);
+    return `\`${pageStr}\`. **\`${cStr}\`** Ägg - ${u.username}`;
+  }).join('\n');
   const pageInfo = `\nPage **${page + 1}** of **${totalPages}**. Player count: **${playerCount}**\n`;
 
   message.channel.send(generateTopList(userString, pageInfo));

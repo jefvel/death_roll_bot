@@ -15,6 +15,9 @@ class Stats {
     longestGame: 'LONGEST_GAME',
     longestRollStreak: 'LONGEST_ROLL_STREAK',
     biggestPot: 'BIGGEST_POT',
+
+    biggestLoseStreak: 'BIGGEST_LOSE_STREAK',
+    biggestWinStreak: 'BIGGEST_WIN_STREAK',
   };
 
   constructor(db, discord, game) {
@@ -72,10 +75,10 @@ class Stats {
     }
   }
 
-  broadcastNewRecord(record, channel) {
+  broadcastNewRecord = (record, channel) => {
     const msg = `**:trumpet: New Record! :trumpet:**\n**${record.name}** - ${record.description}`;
     channel.send(msg);
-    console.log(msg);
+    this.game.logger.info(msg);
   }
 
   async listStats(statIds) {

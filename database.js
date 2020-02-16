@@ -56,6 +56,16 @@ const Players = sequelize.define('players', {
     defaultValue: 0,
     allowNull: false,
   },
+  win_streak: {
+    type: Sequelize.INTEGER,
+    defaultValue: 0,
+    allowNull: false,
+  },
+  lose_streak: {
+    type: Sequelize.INTEGER,
+    defaultValue: 0,
+    allowNull: false,
+  },
 });
 
 const alter = true;
@@ -80,17 +90,7 @@ class Database {
     const user = await this.discord.fetchUser(id, true);
 
     const usr = await Players.create({ id: user.id, username: user.username });
-
-    return {
-      id: usr.id,
-      currency: usr.currency,
-      wins: usr.wins,
-      losses: usr.losses,
-      username: usr.username,
-      townId: usr.townId,
-      basket: usr.basket,
-      chickenCount: usr.chickenCount,
-    };
+    return usr.get({ plain: true });
   }
 
 
@@ -102,6 +102,8 @@ class Database {
     const user = await Players.findOne({ where: { id } });
     if (user) {
       user.increment('wins', { by: amount });
+      user.increment('win_streak', { by: 1 });
+      user.update({ lose_streak: 0 });
     }
   }
 
@@ -109,6 +111,8 @@ class Database {
     const user = await Players.findOne({ where: { id } });
     if (user) {
       user.increment('losses');
+      user.increment('lose_streak', { by: 1 });
+      user.update({ win_streak: 0 });
     }
   }
 
@@ -134,6 +138,7 @@ class Database {
     if (!usr) {
       usr = await this.createUser(user.id);
     }
+
     if (usr) {
       if (usr.currency < amount) {
         amount = usr.currency;

@@ -10,9 +10,10 @@ const constants = require('./constants.js');
 */
 
 class Game {
-  constructor(db, discord) {
+  constructor(db, discord, logger) {
     this.db = db;
     this.discord = discord;
+    this.logger = logger;
   }
 
   inited = false;

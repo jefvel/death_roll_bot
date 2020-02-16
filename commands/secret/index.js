@@ -1,18 +1,15 @@
 const specialRolls = require('./specialrolls');
-async function coolListener(event) {
-  const { game: { items } } = event;
+async function specialRollListener(event) {
+  const { game: { items }, roll } = event;
 
-  if (event.type === 'PLAYER_ROLL') {
-    const item = specialRolls[event.roll];
+  const item = specialRolls[roll];
 
-    if (item) {
-      const res = await items.giveItemToUser(event.user, {
-        name: item.name,
-        description: item.desc,
-        avatarURL: item.avatarURL,
-      }, true);
-    }
-
+  if (item) {
+    const res = await items.giveItemToUser(event.user, {
+      name: item.name,
+      description: item.desc,
+      avatarURL: item.avatarURL,
+    }, true);
   }
 }
 
@@ -29,7 +26,19 @@ function registerCommands(game) {
     }
   });
 
-  game.addEventListener('PLAYER_ROLL', coolListener);
+  game.registerCommand('beararms', async ({ game: { items }, message }) => {
+    const item = await items.giveItemToUser(message.author, {
+      name: ':gun: Gun',
+      description: "It's a gun, fits in your hand just like God intended.",
+      avatarURL: 'https://image.shutterstock.com/image-photo/9mm-pistol-bullets-handgun-on-260nw-745848868.jpg',
+    }, true);
+
+    if (!item.alreadyOwned) {
+      message.author.send('Hope you can shoot some straight up losers with this one.');
+    }
+  });
+
+  game.addEventListener('PLAYER_ROLL', specialRollListener);
 }
 
 module.exports = {

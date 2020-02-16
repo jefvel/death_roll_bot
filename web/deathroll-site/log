@@ -1,0 +1,258 @@
+yarn run v1.19.2
+$ preact build --config preact.config.js --template src/template.html
+{
+  context: '/home/jefvel/projects/death_roll_bot/web/deathroll-site/src',
+  resolve: {
+    modules: [
+      '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules',
+      '/home/jefvel/projects/death_roll_bot/node_modules',
+      '/home/jefvel/node_modules',
+      '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules/preact-cli/node_modules',
+      'node_modules'
+    ],
+    extensions: [
+      '.mjs',  '.js',
+      '.jsx',  '.ts',
+      '.tsx',  '.json',
+      '.less', '.pcss',
+      '.scss', '.sass',
+      '.styl', '.css',
+      '.wasm'
+    ],
+    alias: {
+      style: '/home/jefvel/projects/death_roll_bot/web/deathroll-site/src/style',
+      'preact-cli-entrypoint': '/home/jefvel/projects/death_roll_bot/web/deathroll-site/src/index',
+      react: 'preact/compat',
+      'react-dom': 'preact/compat',
+      'react-addons-css-transition-group': 'preact-css-transition-group',
+      'preact-cli/async-component': '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules/@preact/async-loader/async.js',
+      'preact-compat': 'preact/compat'
+    }
+  },
+  resolveLoader: {
+    modules: [
+      '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules',
+      '/home/jefvel/projects/death_roll_bot/node_modules',
+      '/home/jefvel/node_modules',
+      '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules/preact-cli/node_modules'
+    ],
+    alias: {
+      'proxy-loader': '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules/preact-cli/lib/lib/webpack/proxy-loader.js',
+      async: '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules/@preact/async-loader/index.js'
+    }
+  },
+  module: {
+    rules: [
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object]
+    ]
+  },
+  plugins: [
+    NoEmitOnErrorsPlugin {},
+    DefinePlugin { definitions: [Object] },
+    ProvidePlugin { definitions: [Object] },
+    WebpackFixStyleOnlyEntriesPlugin {
+      apply: [Function: bound apply],
+      options: [Object]
+    },
+    MiniCssExtractPlugin { options: [Object] },
+    ProgressPlugin {
+      profile: false,
+      handler: [Function],
+      modulesCount: 500,
+      showEntries: false,
+      showModules: true,
+      showActiveModules: true
+    },
+    SizePlugin {
+      options: {},
+      pattern: '**/*.{mjs,js,css,html}',
+      exclude: undefined
+    },
+    HashedModuleIdsPlugin { options: [Object] },
+    LoaderOptionsPlugin { options: [Object] },
+    ModuleConcatenationPlugin { options: {} },
+    ReplaceText {
+      options: [Object],
+      values: [Object],
+      patterns: [Map],
+      isMatch: [Function]
+    },
+    PushManifestPlugin { isESMBuild_: true },
+    HtmlWebpackPlugin { options: [Object] },
+    HtmlWebpackExcludeAssetsPlugin {
+      PluginName: 'HtmlWebpackExcludeAssetsPlugin'
+    },
+    PrerenderDataExtractPlugin { location_: '/', data_: '{"url":"/"}' },
+    BabelEsmPlugin { options_: [Object] },
+    CopyPlugin { patterns: [Array], options: {} },
+    DefinePlugin { definitions: [Object] },
+    BabelEsmPlugin { options_: [Object] },
+    InjectManifest { config: [Object] },
+    SWBuilderPlugin {
+      brotli_: false,
+      esm_: true,
+      src_: '/home/jefvel/projects/death_roll_bot/web/deathroll-site/src'
+    },
+    InjectManifest { config: [Object] },
+    Critters {
+      options: [Object],
+      urlFilter: undefined,
+      logger: [LogLevel]
+    }
+  ],
+  optimization: {
+    splitChunks: { minChunks: 3 },
+    minimizer: [ [TerserPlugin], [OptimizeCssAssetsWebpackPlugin] ]
+  },
+  mode: 'production',
+  devtool: 'source-map',
+  node: {
+    console: false,
+    process: false,
+    Buffer: false,
+    __filename: false,
+    __dirname: false,
+    setImmediate: false
+  },
+  entry: {
+    bundle: '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules/preact-cli/lib/lib/entry',
+    polyfills: '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules/preact-cli/lib/lib/webpack/polyfills'
+  },
+  output: {
+    path: '/home/jefvel/projects/death_roll_bot/web/deathroll-site/build',
+    publicPath: '/',
+    filename: '[name].[chunkhash:5].js',
+    chunkFilename: '[name].chunk.[chunkhash:5].js'
+  },
+  performance: { hints: 'warning', maxAssetSize: 200000, maxEntrypointSize: 200000 }
+}
+{
+  context: '/home/jefvel/projects/death_roll_bot/web/deathroll-site/src',
+  resolve: {
+    modules: [
+      '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules',
+      '/home/jefvel/projects/death_roll_bot/node_modules',
+      '/home/jefvel/node_modules',
+      '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules/preact-cli/node_modules',
+      'node_modules'
+    ],
+    extensions: [
+      '.mjs',  '.js',
+      '.jsx',  '.ts',
+      '.tsx',  '.json',
+      '.less', '.pcss',
+      '.scss', '.sass',
+      '.styl', '.css',
+      '.wasm'
+    ],
+    alias: {
+      style: '/home/jefvel/projects/death_roll_bot/web/deathroll-site/src/style',
+      'preact-cli-entrypoint': '/home/jefvel/projects/death_roll_bot/web/deathroll-site/src/index',
+      react: 'preact/compat',
+      'react-dom': 'preact/compat',
+      'react-addons-css-transition-group': 'preact-css-transition-group',
+      'preact-cli/async-component': '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules/@preact/async-loader/async.js',
+      'preact-compat': 'preact/compat'
+    }
+  },
+  resolveLoader: {
+    modules: [
+      '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules',
+      '/home/jefvel/projects/death_roll_bot/node_modules',
+      '/home/jefvel/node_modules',
+      '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules/preact-cli/node_modules'
+    ],
+    alias: {
+      'proxy-loader': '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules/preact-cli/lib/lib/webpack/proxy-loader.js',
+      async: '/home/jefvel/projects/death_roll_bot/web/deathroll-site/node_modules/preact-cli/lib/lib/webpack/dummy-loader'
+    }
+  },
+  module: {
+    rules: [
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object],
+      [Object], [Object]
+    ]
+  },
+  plugins: [
+    NoEmitOnErrorsPlugin {},
+    DefinePlugin { definitions: [Object] },
+    ProvidePlugin { definitions: [Object] },
+    WebpackFixStyleOnlyEntriesPlugin {
+      apply: [Function: bound apply],
+      options: [Object]
+    },
+    MiniCssExtractPlugin { options: [Object] },
+    ProgressPlugin {
+      profile: false,
+      handler: [Function],
+      modulesCount: 500,
+      showEntries: false,
+      showModules: true,
+      showActiveModules: true
+    },
+    SizePlugin {
+      options: {},
+      pattern: '**/*.{mjs,js,css,html}',
+      exclude: undefined
+    },
+    HashedModuleIdsPlugin { options: [Object] },
+    LoaderOptionsPlugin { options: [Object] },
+    ModuleConcatenationPlugin { options: {} },
+    ReplaceText {
+      options: [Object],
+      values: [Object],
+      patterns: [Map],
+      isMatch: [Function]
+    }
+  ],
+  optimization: { splitChunks: { minChunks: 3 } },
+  mode: 'production',
+  devtool: 'source-map',
+  node: {
+    console: false,
+    process: false,
+    Buffer: false,
+    __filename: false,
+    __dirname: false,
+    setImmediate: false
+  },
+  entry: {
+    'ssr-bundle': '/home/jefvel/projects/death_roll_bot/web/deathroll-site/src/index'
+  },
+  output: {
+    publicPath: '/',
+    filename: 'ssr-bundle.js',
+    path: '/home/jefvel/projects/death_roll_bot/web/deathroll-site/build/ssr-build',
+    chunkFilename: '[name].chunk.[chunkhash:5].js',
+    libraryTarget: 'commonjs2'
+  },
+  externals: { preact: 'preact' },
+  target: 'node'
+}
+
+ ssr-bundle.437d3.css ⏤  962 B (+962 B)
+        ssr-bundle.js ⏤  13.4 kB (+13.4 kB)
+
+Re-using existing @babel/preset-modules configuration.
+
+                        sw-esm.js ⏤  741 B (+741 B)
+                            sw.js ⏤  738 B (+738 B)
+                 bundle.23bab.css ⏤  624 B (+624 B)
+              bundle.d0cec.esm.js ⏤  8 kB (+8 kB)
+           polyfills.a0e83.esm.js ⏤  2.01 kB (+2.01 kB)
+       route-home.chunk.2cd72.css ⏤  162 B (+162 B)
+    route-home.chunk.58264.esm.js ⏤  5.3 kB (+5.3 kB)
+    route-profile.chunk.62c75.css ⏤  77 B (+77 B)
+ route-profile.chunk.44a5c.esm.js ⏤  560 B (+560 B)
+                  bundle.b5a33.js ⏤  8.04 kB (+8.04 kB)
+               polyfills.ea3a1.js ⏤  2.01 kB (+2.01 kB)
+        route-home.chunk.cc64d.js ⏤  5.39 kB (+5.39 kB)
+     route-profile.chunk.16ba5.js ⏤  680 B (+680 B)
+
+info Visit https://yarnpkg.com/en/docs/cli/run for documentation about this command.

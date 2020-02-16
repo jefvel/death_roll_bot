@@ -19,6 +19,8 @@ const DeathRoll = require('./deathroll.js');
 
 const Notifications = require('./notifications');
 
+const logger = require('./logger');
+
 const numbers = [
   'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen',
   'fifteen', 'sixteen', 'seventeen',
@@ -53,12 +55,13 @@ let game = null;
 let deathRoll = null;
 
 client.on("ready", () => {
-    console.log(`Bot has started, with ${client.users.size} users, in ${client.channels.size} channels of ${client.guilds.size} guilds.`);
+    logger.info(`Bot has started, with ${client.users.size} users, in ${client.channels.size} channels of ${client.guilds.size} guilds.`);
 
     updateStatus();
 
     db = new Database(client);
-    game = new Game(db, client);
+    game = new Game(db, client, logger);
+    db.game = game;
 
     towns = new Towns(db, client, game);
     stats = new Stats(db, client, game);
@@ -99,13 +102,13 @@ function registerCommands(game) {
 
 client.on("guildCreate", guild => {
     // This event triggers when the bot joins a guild.
-    console.log(`New guild joined: ${guild.name} (id: ${guild.id}). This guild has ${guild.memberCount} members!`);
+    logger.info(`New guild joined: ${guild.name} (id: ${guild.id}). This guild has ${guild.memberCount} members!`);
     updateStatus();
 });
 
 client.on("guildDelete", guild => {
     // this event triggers when the bot is removed from a guild.
-    console.log(`I have been removed from: ${guild.name} (id: ${guild.id})`);
+    logger.info(`I have been removed from: ${guild.name} (id: ${guild.id})`);
     updateStatus();
 });
 
@@ -206,7 +209,7 @@ class GameRoom {
   }
 
   startWaitingForPlayers() {
-    console.log(`Waiting for players on channel ${this.channel.name}`);
+    logger.info(`Waiting for players on channel ${this.channel.name}`);
     this.waitingForPlayersTimeLeft = constants.waitForPlayersTime;
     this.players = [];
     this.userQueue = [];
@@ -353,7 +356,7 @@ class GameRoom {
     this.waitingForPlayers = false;
 
     if (this.userQueue.length <= 1) {
-      console.log(`Not enough players joined on channel ${this.channel.name}`);
+      logger.info(`Not enough players joined on channel ${this.channel.name}`);
       this.gameMessage.edit(`${this.getTitleText()} Not enough players joined.`);
       this.finishGame();
       return;
@@ -361,7 +364,7 @@ class GameRoom {
 
     this.currentPlayerIndex = 0;
 
-    console.log(`Starting game on channel ${this.channel.name}`);
+    logger.info(`Starting game on channel ${this.channel.name}`);
 
     this.gameMessage.clearReactions().then(() => this.gameMessage.react(dice));
     this.currentMaxRoll = this.rollAmount;
@@ -379,7 +382,7 @@ class GameRoom {
     if (this.players.length <= 1) {
       this.cancelGame();
       this.finishGame();
-      console.log(`Too few players with ${currency} to bet`);
+      logger.info(`Too few players with ${currency} to bet`);
       this.gameMessage.edit(`${this.getTitleText()} Too few players with ${currency}. Cancelling game.`);
       return;
     }
@@ -492,7 +495,7 @@ class GameRoom {
 
       db.deposit(player.user, amountCanWin);
 
-      console.log(`Paid :egg:${amountCanWin} ${currency} to ${player.user.username}`);
+      logger.info(`Paid :egg:${amountCanWin} ${currency} to ${player.user.username}`);
       let msg = `Paid :egg:${amountCanWin} ${currency} to ${player.user.username}`;
       if (winningPlayer == player) {
         msg += ` (**Winner**)`;
@@ -551,7 +554,15 @@ class GameRoom {
     player.eliminated = true;
     player.finalPlacement = this.players.filter(e => !e.eliminated).length - 1;
 
-    db.addLossToUser(player.id);
+    game.dispatchEvent({
+      type: 'PLAYER_LOST_ROLL',
+      channel: this.channel,
+      message: this.gameMessage,
+      user: player.user,
+      currentRoll: this.currentMaxRoll,
+      participants: this.players,
+      player,
+    });
 
     let loseMessage = `, and was eliminated :skull:`;
 
@@ -561,7 +572,16 @@ class GameRoom {
     if (gameFinished) {
       this.gameCompleted = true;
       const winningPlayer = this.players[winningPlayerIndex];
-      db.addWinToUser(winningPlayer.id, this.players.length - 1);
+
+      game.dispatchEvent({
+        type: 'PLAYER_WON_ROLL',
+        channel: this.channel,
+        message: this.gameMessage,
+        user: winningPlayer.user,
+        currentRoll: this.currentMaxRoll,
+        participants: this.players,
+        player: winningPlayer,
+      });
     }
 
     let winMessage = gameFinished ? `\n**${this.players[winningPlayerIndex].username}** won!` : '';
@@ -687,7 +707,7 @@ class GameRoom {
       message += killMessage;
     }
 
-    console.log(message);
+    logger.info(message);
 
     this.eventLog.push(message);
 
@@ -764,7 +784,7 @@ class GameRoom {
       this.clearUserReactions();
     });
 
-    this.reactionCollector.on('end', collected => console.log(`Collected ${collected.size} items`));
+    this.reactionCollector.on('end', collected => logger.info(`Collected ${collected.size} items`));
   }
 }
 
@@ -789,7 +809,7 @@ client.on("message", async message => {
 
   const command = args.shift().toLowerCase();
 
-  console.log(`${message.author.username} entered command: \n >>> ${command} ${args.join(', ')}`);
+  logger.info(`${message.author.username} entered command: >>> ${command} ${args.join(', ')}`);
 
   if (game !== null && game.inited) {
     game.runCommand(command, args, message, player);
