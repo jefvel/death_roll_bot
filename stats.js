@@ -12,6 +12,7 @@ class Stats {
     biggestRollDeath: 'BIGGEST_ROLL_DEATH',
     biggestSuddenEgg: 'BIGGEST_SUDDEN_EGG',
     biggestMeal: 'BIGGEST_MEAL',
+    mostChickens: 'MOST_CHICKENS_PUKE',
     longestGame: 'LONGEST_GAME',
     longestRollStreak: 'LONGEST_ROLL_STREAK',
     biggestPot: 'BIGGEST_POT',
@@ -55,7 +56,7 @@ class Stats {
     await this.globalStats.sync({ alter : true });
   }
 
-  async updateStatIfHigher(statID, statValue, statName, statDesc) {
+  async updateStatIfHigher(statID, statValue, statName, statDesc, channel) {
     let stat = await this.globalStats.findOne({ where: { id: statID }, raw: true });
     let changed = false;
     if (stat) {
@@ -67,6 +68,10 @@ class Stats {
     } else {
         changed = true;
         stat = await this.globalStats.create({ id: statID,  value: statValue, name: statName, description: statDesc }, { raw: true });
+    }
+
+    if (channel && changed) {
+      this.broadcastNewRecord(stat, channel);
     }
 
     return {

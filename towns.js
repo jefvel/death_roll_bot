@@ -42,17 +42,20 @@ class Towns {
 
   registerCommands(game) {
     game.registerCommand('town', require('./commands/town'));
+    game.registerCommand('towns', require('./commands/town'));
     game.registerCommand('join', require('./commands/join'));
     game.registerCommand('config', require('./commands/config'));
     game.registerCommand('contribute', require('./commands/contribute'));
+    game.registerCommand('townbattle', require('./commands/townbattle'));
   }
 
   async sync() {
     await this.towns.sync({ alter: true });
   }
 
-  async contributeToTown(serverID, amount) {
+  async contributeToTown(player, serverID, amount) {
     const town = await this.towns.findOne({ where: { id: serverID } });
+    this.game.db.addToTownContribution(player, amount);
     if (town) {
       await town.increment('currency', { by: amount });
     }
@@ -113,6 +116,10 @@ class Towns {
 
   async getTownPopulation(serverID) {
     return await this.game.db.players.count({ where: { townId: serverID } });
+  }
+
+  async getTownMembers(serverID) {
+    return await this.game.db.players.findAll({ where: { townId: serverID }, raw: true });
   }
 
   async createTown(serverID, channelID, name) {

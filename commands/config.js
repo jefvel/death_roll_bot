@@ -11,7 +11,7 @@ class ConfigPrompt extends FormPrompt {
   }
 
   onInit() {
-    this.sendMessage(`What's up my favourite man! It is very cool that you want to create a Town in the server **${this.guild.name}**!\n-----------\n`);
+    this.sendMessage(`What's up! It is very cool that you want to create a Town in the server **${this.guild.name}**!\n-----------\n`);
 
     const channelList = [];
 

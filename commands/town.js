@@ -6,6 +6,8 @@ async function town({ message, player, game }) {
   }
 
   const town = await game.towns.getTown(townId);
+  const members = await game.towns.getTownMembers(townId);
+  const membersList = members.map(m => `[${m.username}](https://deathroll.net/player/${m.id}), contributed \`${m.town_contribution}\` Ägg`).join('\n');
   const pop = await game.towns.getTownPopulation(townId);
 
   const embed = {
@@ -17,17 +19,17 @@ async function town({ message, player, game }) {
     fields: [
       {
         inline: true,
-        name: ":people_holding_hands: Town Population",
-        value: `**${pop.toLocaleString()}**`,
-      },
-      {
-        inline: true,
         name: ":egg: Town Ägg Count",
         value: `**${town.currency.toLocaleString()}**`,
       },
       {
+        inline: true,
         name: ":map: World Coordinates",
-        value: `**${town.x}**, **${town.y}**`,
+        value: `:cityscape: [**${town.x}**, **${town.y}**](https://deathroll.net/map?town=${town.id})`,
+      },
+      {
+        name: ":people_holding_hands: Town Members",
+        value: membersList,
       },
     ]
   };

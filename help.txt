@@ -8,11 +8,12 @@ You can `d.collect` these, and invest them in various ways.
 
 _Player Specific_
 * `d.collect` - Collects :egg: Ägg from your basket into your wallet
-* `d.roll [roll amount] [bet amount, a percentage (25%), or all] [required]` - Start a new cool roll game. If `required` is defined, then no partial bets will be allowed.
+* `d.roll [roll amount, random] [bet amount, a percentage (25%), all, random] [required]` - Start a new cool roll game. If `required` is defined, then no partial bets will be allowed.
 * `d.stats [@user/user]` - Show stats about yourself, or another player
 * `d.top [page]` - Show top players, paginated
 * `d.eat [egg amount, defaults to 1, the recommended serving size]` - Eat eggs
 * `d.records` - List various Ägg world records.
+* `d.store` - Open up the Ägg store. You can purchase things there.
 
 _Town (Server) Specific_
 * `d.join` - Join the Town of the server. It is only possible to be a member of one town at a time.

@@ -2,11 +2,13 @@ import { h, Component } from 'preact';
 import { Router } from 'preact-router';
 
 import Header from './header';
-import Footer from './footer';
 
 // Code-splitting is automated for routes
 import Home from '../routes/home';
+import Top from '../routes/top';
 import Player from '../routes/player';
+import MapRoute from '../routes/maproute';
+import Error from '../routes/error';
 
 export default class App extends Component {
 
@@ -20,14 +22,17 @@ export default class App extends Component {
 
   render() {
     return (
-      <div class="cover-container d-flex w-100 p-3 mx-auto flex-column text-center">
-        <Header />
-        <Router onChange={this.handleRoute}>
-          <Home path="/" />
-          <Player path="/player/" user="me" />
-          <Player path="/player/:id" />
-        </Router>
-        <Footer />
+      <div class="d-flex w-100 mx-auto flex-column">
+		<Header />
+		<section class="container">
+		  <Router onChange={this.handleRoute}>
+			<Home path="/" />
+			<Player path="/player/:id" />
+			<MapRoute path="/map" />
+			<Top path="/top" />
+			<Error type="404" default />
+		  </Router>
+		</section>
       </div>
     );
   }

@@ -12,6 +12,7 @@ async function roll({ message, game, args }) {
 
   const roll = parseInt(args[0], 10) || 100;
 
+
   let bet = args.length > 1 ? parseInt(args[1], 10) || -1 : 0;
 
   let percentage = false;

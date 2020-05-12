@@ -66,6 +66,31 @@ const Players = sequelize.define('players', {
     defaultValue: 0,
     allowNull: false,
   },
+  town_contribution: {
+    type: Sequelize.INTEGER,
+    defaultValue: 0,
+    allowNull: false,
+  },
+  total_won_eggs: {
+    type: Sequelize.INTEGER,
+    defaultValue: 0,
+    allowNull: false,
+  },
+  total_lost_eggs: {
+    type: Sequelize.INTEGER,
+    defaultValue: 0,
+    allowNull: false,
+  },
+  total_eaten_eggs: {
+    type: Sequelize.INTEGER,
+    defaultValue: 0,
+    allowNull: false,
+  },
+  experience: {
+    type: Sequelize.FLOAT,
+    defaultValue: 0,
+    allowNull: false,
+  },
 });
 
 const alter = true;
@@ -116,6 +141,34 @@ class Database {
     }
   }
 
+  async incrementExp(id, amount) {
+    const user = await Players.findOne({ where: { id } });
+    if (user) {
+      user.increment('experience', { by: amount });
+    }
+  }
+
+  async incrementTotalLostEggs(id, amount) {
+    const user = await Players.findOne({ where: { id } });
+    if (user) {
+      user.increment('total_lost_eggs', { by: amount });
+    }
+  }
+
+  async incrementTotalEatenEggs(id, amount) {
+    const user = await Players.findOne({ where: { id } });
+    if (user) {
+      user.increment('total_eaten_eggs', { by: amount });
+    }
+  }
+
+  async incrementTotalWonEggs(id, amount) {
+    const user = await Players.findOne({ where: { id } });
+    if (user) {
+      user.increment('total_won_eggs', { by: amount });
+    }
+  }
+
   async giveChickensToUser(id, amount) {
     if (amount === undefined || amount === null) {
       amount = 1;
@@ -157,6 +210,13 @@ class Database {
     }
   }
 
+  async addToTownContribution(user, amount) {
+    const usr = await Players.findOne({ where: { id: user.id } });
+    if (usr) {
+      return await usr.increment('town_contribution', { by: amount });
+    }
+  }
+
   async getPlayerCount() {
     const count = await Players.count({
       distinct: true,
@@ -191,6 +251,7 @@ class Database {
       return {
         username: u.username,
         currency: u.currency,
+        id: u.id,
       };
     }));
 
@@ -201,13 +262,17 @@ class Database {
       return await Players.update({ username: username }, { where: { id } });
   }
 
-  async giveEggsToEveryone(amount) {
+  async giveEggsToEveryone(a) {
+    const amount = a ? a : 1;
     return await Players.update(
-      { basket: sequelize.literal(`basket + 1`) },
+      { basket: sequelize.literal(`basket + ${amount}`) },
       {
         where: {
+          currency: {
+            [Op.lte]: 100000,
+          },
           basket: {
-            [Op.lte]: 4000
+            [Op.lte]: 3999,
           },
         }
       }

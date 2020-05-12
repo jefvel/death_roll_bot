@@ -17,3 +17,8 @@ export async function getPlayerInfo(id) {
   return res.data;
 }
 
+export async function listTowns() {
+  const res = await axios.get(`${apiUrl}/town`);
+  return res.data;
+}
+

@@ -1,39 +1,60 @@
-function generateUserInfoEmbed(info, items, town) {
+function generateUserInfoEmbed(info, items, town, levelInfo) {
   const kd = info.losses == 0 ? ':star::star::star:' : (info.wins / info.losses).toFixed(2);
 
   const embed = {
     title: `${info.currency} Ägg`,
-    description: `**${info.wins}** Wins, **${info.losses}** Losses. That's a W/L Ratio of **${kd}**`,
+    description: `**${info.wins}** Wins, **${info.losses}** Losses. That's a W/L Ratio of **${kd}**\n**Totals**: Won Ägg: **${info.total_won_eggs}**. Lost Ägg: **${info.total_lost_eggs}** `,
     color: 6049602,
     thumbnail: {
-      url: "https://cdn.discordapp.com/attachments/668497531742978100/677232220900950046/unknown.png"
+      url: levelInfo.avatarUrl,
     },
     author: {
-      name: info.username,
+      name: `${info.username}, The ${levelInfo.title} (Lvl. ${levelInfo.level})`,
       url: `https://deathroll.net/player/${info.id}`,
-      icon_url: "https://cdn.discordapp.com/attachments/668497531742978100/677232220900950046/unknown.png"
+      icon_url: levelInfo.avatarUrl,
     },
     fields: [
-      {
-        inline: true,
-        name: ":cityscape: Town",
-        value: town ? `Member of the town **${town.name}**` : "Not a member of a town.",
-      },
     ]
   };
+
+  const levelProgress = levelInfo.exp / levelInfo.nextLevelExp;
+
+  const gr = '🟩';
+  const wh = '⬜';
+
+  const ps = 20;
+  let progressBar = '';
+  for (let i = 0; i < ps; i ++) {
+    if (i / ps >= levelProgress) {
+      progressBar += wh;
+    } else {
+      progressBar += gr;
+    }
+  }
+
+  embed.fields.push({
+    name: `${levelInfo.exp}/${levelInfo.nextLevelExp} ÄXP`,
+    value: progressBar,
+  });
+
+  embed.fields.push({
+    inline: true,
+    name: ":cityscape: Town",
+    value: town ? `**[${town.name}](https://deathroll.net/map?town=${town.id})**` : "Not a member of a town.",
+  });
 
   if (info.chickenCount > 0) {
     embed.fields.push({
       inline: true,
       name: ":baby_chick: Chickens",
-      value: `Owns **${info.chickenCount}** chickens`,
+      value: `Owns **${info.chickenCount}** chickens\nHas eaten **${info.total_eaten_eggs}** Ägg`,
     });
   }
 
   if (items.length > 0) {
     let itemInfo = '';
     items.forEach(item => {
-      itemInfo += `**${item.name}** - ${item.description}\n`;
+      itemInfo += `${item.emoji} **${item.name}** - ${item.description}\n`;
     });
     embed.fields.push({
       name: ":handbag: Items",
@@ -53,12 +74,20 @@ async function stats({ message, args, game }) {
     checkingOther = true;
   }
 
-  const info = await db.getUser(id);
+  let info = null;
+
+  try {
+    info = await db.getUser(id);
+  } catch(error) {
+    console.log(error);
+  }
 
   if (info == null) {
     message.channel.send('Could not find player. Players are only visible after joining an death roll.');
     return;
   }
+
+  let levelInfo = await game.levels.getPlayerLevelInfo(id);
 
   const items = await game.items.listUserItems({ id });
 
@@ -67,7 +96,7 @@ async function stats({ message, args, game }) {
     town = await game.towns.getTown(info.townId);
   }
 
-  const embed = generateUserInfoEmbed(info, items, town);
+  const embed = generateUserInfoEmbed(info, items, town, levelInfo);
 
   if (checkingOther) {
     message.channel.send(embed);

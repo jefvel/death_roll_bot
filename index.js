@@ -17,6 +17,8 @@ const Game = require('./game.js');
 const Eggs = require('./eggs.js');
 const DeathRoll = require('./deathroll.js');
 
+const Levels = require('./levels.js');
+
 const Notifications = require('./notifications');
 
 const logger = require('./logger');
@@ -53,6 +55,7 @@ let stats = null;
 let eggs = null;
 let game = null;
 let deathRoll = null;
+let levels = null;
 
 client.on("ready", () => {
     logger.info(`Bot has started, with ${client.users.size} users, in ${client.channels.size} channels of ${client.guilds.size} guilds.`);
@@ -66,6 +69,8 @@ client.on("ready", () => {
     towns = new Towns(db, client, game);
     stats = new Stats(db, client, game);
     items = new Items(db, client, game);
+
+    levels = new Levels(game);
 
     Promise.all([
       db.sync(),
@@ -86,18 +91,19 @@ client.on("ready", () => {
       game.towns = towns;
       game.items = items;
       game.chickens = chickens;
+      game.levels = levels;
 
       registerCommands(game);
 
       game.inited = true;
 
       Notifications.init(game);
-
     });
 });
 
 function registerCommands(game) {
   game.registerCommand('help', require('./commands/help'));
+  game.registerCommand('store', require('./commands/store'));
 }
 
 client.on("guildCreate", guild => {
@@ -493,18 +499,62 @@ class GameRoom {
       loserCount --;
       totalPot -= amountCanWin;
 
-      db.deposit(player.user, amountCanWin);
-
-      logger.info(`Paid :egg:${amountCanWin} ${currency} to ${player.user.username}`);
-      let msg = `Paid :egg:${amountCanWin} ${currency} to ${player.user.username}`;
-      if (winningPlayer == player) {
-        msg += ` (**Winner**)`;
+      if (amountCanWin < 0) {
+        amountCanWin = 0;
       }
 
-      this.eventLog.push(msg);
+      let wonEggs = 0;
+      let lostEggs = 0;
 
-      if (totalPot <= 0) {
-        break;
+      if (amountCanWin < player.bet) {
+        lostEggs = player.bet - amountCanWin;
+        db.incrementTotalLostEggs(player.user.id, lostEggs);
+      }
+
+      if (amountCanWin > 0) {
+        const increasedEggs = Math.max(amountCanWin - player.bet, 0);
+        wonEggs = increasedEggs;
+        if (increasedEggs > 0) {
+          db.incrementTotalWonEggs(player.user.id, increasedEggs);
+        }
+
+        db.deposit(player.user, amountCanWin);
+
+        logger.info(`Paid :egg:${amountCanWin} ${currency} to ${player.user.username}`);
+        let msg = `Paid :egg:${amountCanWin} ${currency} to ${player.user.username}`;
+        if (winningPlayer == player) {
+          msg += ` (**Winner**)`;
+        }
+
+        this.eventLog.push(msg);
+      }
+
+
+      if (player == this.winningPlayer) {
+        game.dispatchEvent({
+          type: 'PLAYER_WON_ROLL',
+          channel: this.channel,
+          message: this.gameMessage,
+          user: this.winningPlayer.user,
+          currentRoll: this.currentMaxRoll,
+          participants: this.players,
+          player: this.winningPlayer,
+          wonEggs,
+          room: this,
+        });
+      } else {
+        game.dispatchEvent({
+          type: 'PLAYER_LOST_ROLL',
+          channel: this.channel,
+          message: this.gameMessage,
+          user: player.user,
+          currentRoll: this.currentMaxRoll,
+          participants: this.players,
+          room: this,
+          player,
+          lostEggs,
+        });
+
       }
     }
   }
@@ -554,16 +604,6 @@ class GameRoom {
     player.eliminated = true;
     player.finalPlacement = this.players.filter(e => !e.eliminated).length - 1;
 
-    game.dispatchEvent({
-      type: 'PLAYER_LOST_ROLL',
-      channel: this.channel,
-      message: this.gameMessage,
-      user: player.user,
-      currentRoll: this.currentMaxRoll,
-      participants: this.players,
-      player,
-    });
-
     let loseMessage = `, and was eliminated :skull:`;
 
     let gameFinished = this.players.filter(p => !p.eliminated).length === 1;
@@ -572,16 +612,7 @@ class GameRoom {
     if (gameFinished) {
       this.gameCompleted = true;
       const winningPlayer = this.players[winningPlayerIndex];
-
-      game.dispatchEvent({
-        type: 'PLAYER_WON_ROLL',
-        channel: this.channel,
-        message: this.gameMessage,
-        user: winningPlayer.user,
-        currentRoll: this.currentMaxRoll,
-        participants: this.players,
-        player: winningPlayer,
-      });
+      this.winningPlayer = winningPlayer;
     }
 
     let winMessage = gameFinished ? `\n**${this.players[winningPlayerIndex].username}** won!` : '';
@@ -703,11 +734,12 @@ class GameRoom {
       }
     }
 
+    logger.info(message);
+
     if (killMessage.length > 0) {
+      logger.info(killMessage);
       message += killMessage;
     }
-
-    logger.info(message);
 
     this.eventLog.push(message);
 
@@ -795,6 +827,10 @@ client.on("message", async message => {
   // Ensure player exists
   const player = await db.getUser(message.author.id, true);
 
+  if (player.username !== message.author.username) {
+    db.setUsername(message.author.id, message.author.username);
+  }
+
   if (message.channel.type === 'dm') {
     game.dispatchEvent({
       type: 'DIRECT_MESSAGE',
@@ -827,7 +863,12 @@ client.on("message", async message => {
       return;
     }
 
-    const roll = parseInt(args[0], 10) || 100;
+    let roll = parseInt(args[0], 10) || 100;
+    if (`${args[0]}`.toLowerCase() === 'random') {
+      roll = Math.floor(Math.random() * 100000) + 1;
+    } else if (`${args[0]}`.toLowerCase() === 'all') {
+      roll = 'all';
+    }
 
     let bet = args.length > 1 ? parseInt(args[1], 10) || -1 : 0;
 
@@ -843,6 +884,11 @@ client.on("message", async message => {
         bet = 50;
       }
       if (b.endsWith('%')) {
+        percentage = true;
+      }
+
+      if (b.toLowerCase() === 'random') {
+        bet = Math.round(Math.random() * 100);
         percentage = true;
       }
     }
@@ -863,6 +909,10 @@ client.on("message", async message => {
         bet = Math.floor(userInfo.currency * bet);
       } else if (bet > userInfo.currency) {
         bet = userInfo.currency;
+      }
+
+      if (roll === 'all') {
+        roll = userInfo.currency;
       }
 
       runningGames[message.channel.id] = new GameRoom(message.channel, roll, bet, message.author, required);
@@ -893,6 +943,5 @@ function question() {
   });
 }
 
-question();
-
+// question();
 

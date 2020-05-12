@@ -2,22 +2,28 @@ const currency = 'Ägg';
 
 function generateTopList(topList, pageInfo) {
   const embed = {
-    title: "Top Players",
+    title: "Top Players (Egg Count)",
     color: 6049602,
-    fields: [
-      {
-        name: "\u200b",
-        value: topList,
-      },
-      {
-        name: "\u200b",
-        value: pageInfo,
-      },
-    ]
+    description: topList + '\n' + pageInfo,
   };
 
   return { embed };
 }
+
+const numEmojis = [
+  '0️⃣',
+  '1️⃣',
+  '2️⃣',
+  '3️⃣',
+  '4️⃣',
+  '5️⃣',
+  '6️⃣',
+  '7️⃣',
+  '8️⃣',
+  '9️⃣',
+];
+
+const blueSquare = '🟦';
 
 async function top({ command, message, args, game }) {
   const db = game.db;
@@ -38,13 +44,23 @@ async function top({ command, message, args, game }) {
   }
 
   const users = await db.getTop10Players(pageSize, page);
-  const strL = `${playerCount}`.length;
+  //const strL = `${playerCount}`.length;
+  const strL = `${pageSize * (page + 1)}`.length;
   const userString = users.map((u, index) => {
     const pageStr = ('' + (pageSize * page + index + 1)).padStart(strL);
     const cStr =`${u.currency}`.padStart(9);
-    return `\`${pageStr}\`. **\`${cStr}\`** Ägg - ${u.username}`;
+    let emojiStr = '';
+    for (let i = 0; i < pageStr.length; i ++) {
+      const char = pageStr.charAt(i);
+      if (char === ' ') {
+        emojiStr += blueSquare;
+      } else {
+        emojiStr += numEmojis[parseInt(char)];
+      }
+    }
+    return `${emojiStr}**\`${cStr}\`** - [${u.username}](https://deathroll.net/player/${u.id})`;
   }).join('\n');
-  const pageInfo = `\nPage **${page + 1}** of **${totalPages}**. Player count: **${playerCount}**\n`;
+  const pageInfo = `\nPage **${page + 1}** of **${totalPages}**. Total Players: **${playerCount}**\n`;
 
   message.channel.send(generateTopList(userString, pageInfo));
 }

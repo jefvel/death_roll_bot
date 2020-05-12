@@ -5,20 +5,18 @@ async function specialRollListener(event) {
   const item = specialRolls[roll];
 
   if (item) {
-    const res = await items.giveItemToUser(event.user, {
-      name: item.name,
-      description: item.desc,
-      avatarURL: item.avatarURL,
-    }, true);
+    const res = await items.giveItemToUser(event.user, item, true);
   }
 }
 
 function registerCommands(game) {
   game.registerCommand('gibemonipls', async ({ game: { items }, message }) => {
     const item = await items.giveItemToUser(message.author, {
-      name: ':yellow_circle:  Moni',
+      name: 'Moni',
+      emoji: ':yellow_circle:',
       description: 'This is money originally intended for potions. Completely useless.',
-      avatarURL: 'https://cdn.discordapp.com/attachments/668497531742978100/677225697424703508/unknown.png',
+      avatar_url: 'https://cdn.discordapp.com/attachments/668497531742978100/677225697424703508/unknown.png',
+      price: 0,
     });
 
     if (!item.alreadyOwned) {
@@ -28,9 +26,11 @@ function registerCommands(game) {
 
   game.registerCommand('beararms', async ({ game: { items }, message }) => {
     const item = await items.giveItemToUser(message.author, {
-      name: ':gun: Gun',
+      name: 'Gun',
+      emoji: ':gun:',
       description: "It's a gun, fits in your hand just like God intended.",
-      avatarURL: 'https://image.shutterstock.com/image-photo/9mm-pistol-bullets-handgun-on-260nw-745848868.jpg',
+      avatar_url: 'https://media.discordapp.net/attachments/668497531742978100/679422006957178900/unknown.png',
+      price: 100,
     }, true);
 
     if (!item.alreadyOwned) {

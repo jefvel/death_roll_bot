@@ -30,13 +30,18 @@ class Game {
   runCommand(command, args, message, player) {
     const cmd = this.commands[command.toLowerCase()];
     if (cmd) {
-      cmd({
-        command,
-        args,
-        message,
-        game: this,
-        player,
-      });
+      try {
+        cmd({
+          command,
+          args,
+          message,
+          game: this,
+          player,
+          user: message.author,
+        });
+      } catch (error) {
+        this.logger.error(error);
+      }
     }
   }
 

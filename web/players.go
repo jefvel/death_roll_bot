@@ -17,6 +17,8 @@ type Item struct {
   Description string `json:"description"`
   OwnerID string `json:"ownerID"`
   AvatarURL string `json:"avatarURL"`
+  Emoji string `json:"emoji"`
+  Price int `json:"price"`
 }
 
 type Player struct {
@@ -29,7 +31,8 @@ type Player struct {
   Losses int `json:"losses"`
   WinStreak int `json:"winStreak"`
   LoseStreak int `json:"loseStreak"`
-  TownID *int `json:"townID"`
+  TownID *string `json:"townID"`
+  Town *Town `json:"town"`
   Items []Item `json:"items"`
 }
 
@@ -38,7 +41,7 @@ type PlayerList struct {
 }
 
 func getPlayerItems(id string) []Item {
-  sqlStatement := `SELECT name, description, "ownerID", avatar_url FROM items WHERE "ownerID"=$1;`
+  sqlStatement := `SELECT name, description, avatar_url, emoji, price from items where id in (select "itemId" from player_items where "playerId"=$1)`;
 
   rows, err := db.Query(sqlStatement, id)
   if err != nil {
@@ -50,7 +53,7 @@ func getPlayerItems(id string) []Item {
 
   for rows.Next() {
 	t := Item{}
-    switch err := rows.Scan(&t.Name, &t.Description, &t.OwnerID, &t.AvatarURL); err {
+    switch err := rows.Scan(&t.Name, &t.Description, &t.AvatarURL, &t.Emoji, &t.Price); err {
 	case sql.ErrNoRows:
       return nil
 	case nil:
@@ -76,6 +79,10 @@ func PlayerInfo(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
 	fmt.Fprintf(w, "null")
   case nil:
     t.Items = getPlayerItems(id)
+    if t.TownID != nil {
+      town, _ := getTown(*t.TownID)
+      t.Town = town
+    }
     s, _ := json.Marshal(t)
     w.Write(s)
   default:

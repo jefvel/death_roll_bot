@@ -6,10 +6,12 @@ class WinLoseStats {
   }
 
   onPlayerWon = async (e) => {
-    const { player, participants } = e;
+    const { game, player, participants } = e;
     const user = await this.game.db.getUser(player.id);
 
     const { stats } = this.game;
+
+    game.db.incrementExp(player.id, e.wonEggs * game.constants.exp_per_win * Math.pow(game.constants.exp_win_multiplier, participants.length - 1));
 
     stats.updateStatIfHigher(
       stats.statsKeys.biggestLoseStreak,
@@ -25,10 +27,12 @@ class WinLoseStats {
   }
 
   onPlayerLost = async (e) => {
-    const { player, participants } = e;
+    const { room, game, player, participants } = e;
     const user = await this.game.db.getUser(player.id);
 
     const { stats } = this.game;
+
+    game.db.incrementExp(player.id, e.lostEggs * game.constants.exp_per_loss * Math.pow(game.constants.exp_win_multiplier, participants.length - 1));
 
     stats.updateStatIfHigher(
       stats.statsKeys.biggestWinStreak,
@@ -39,6 +43,16 @@ class WinLoseStats {
         stats.broadcastNewRecord(record.stat, e.channel);
       }
     });
+
+    if (user.currency === 0 && room.bet > 0) {
+      const res = await game.items.giveItemToUser(e.user, {
+        price: 0,
+        name: 'Gamblers Anonymous Membership',
+        description: 'For those who have bet all what they have, and lost',
+        avatar_url: 'https://media.discordapp.net/attachments/668497531742978100/681152647738163235/unknown.png',
+        emoji: ':card_index:',
+      }, true);
+    }
 
     this.game.db.addLossToUser(player.id);
   }

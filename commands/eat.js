@@ -15,19 +15,23 @@ async function eat({ message, game, args }) {
 
   message.channel.send(`${message.author} ate :egg:**${amount}** ${currency}. What a meal!`);
 
-  const a = Math.min(amount, Math.floor(game.constants.chickenSpawnChance / (Math.random() / amount)));
+  await db.incrementTotalEatenEggs(message.author.id, amount);
+  await db.incrementExp(message.author.id, amount * game.constants.exp_per_eat);
+
+  //const a = Math.min(amount, Math.floor(game.constants.chickenSpawnChance / (Math.random() / amount)));
+
+  const multiplier = Math.max(1, Math.log10(amount / 100) * 0.4);
+  const a = Math.min(amount, Math.floor((game.constants.chickenSpawnChance * multiplier)/ (Math.random() / amount)));
+
+  game.logger.info(`${message.author.username} got ${a} chickens from eating ${amount} eggs.`);
 
   if (a > 0) {
     chickens.giveChickensToUser(message.author, message.channel, a);
   }
 
-  const record = await stats.updateStatIfHigher(
-    stats.statsKeys.biggestMeal, amount, `:cooking: Biggest Meal`, `**${user.username}** ate the biggest meal: **${amount}** Ägg!`
+  await stats.updateStatIfHigher(
+    stats.statsKeys.biggestMeal, amount, `:cooking: Biggest Meal`, `**${user.username}** ate the biggest meal: **${amount}** Ägg!`, message.channel,
   );
-
-  if (record.changed) {
-    stats.broadcastNewRecord(record.stat, message.channel);
-  }
 }
 
 module.exports = eat;

@@ -7,8 +7,22 @@ async function records({ game, message }) {
   }
 
   const records = await stats.listStats(keys);
-  const msg = records.map(record => `**${record.name}** - ${record.description}`).join('\n');
-  message.channel.send(`:man_bowing: **Hall of Records** :woman_bowing:\n:first_place:--------:trophy:-------:first_place:\n${msg}`);
+  const fields = records.map(record => {
+    return {
+      name: `**${record.name}**`,
+      value: `${record.description}`,
+    };
+  });
+
+  const embed = {
+    title: ":man_bowing: **Hall of Records** :woman_bowing:",
+    description: 'Here follows some great feats',
+    color: 0x44ff22,
+    fields
+  };
+
+  message.channel.send({ embed });
 }
 
 module.exports = records;
+

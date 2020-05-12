@@ -14,7 +14,7 @@ class Eggs {
   }
 
   startEggTicker() {
-    const amount = 1;
+    const amount = 2;
     this.eggTicker = setInterval(() => {
       this.game.db.giveEggsToEveryone(amount);
       //this.game.tempStatus(`Dropped ${amount} ${this.game.constants.currency} in your basket`);

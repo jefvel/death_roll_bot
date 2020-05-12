@@ -16,7 +16,7 @@ async function contribute({ game, message, args, player }) {
   }
 
   const eggs = await game.db.withdraw(player, amount);
-  await game.towns.contributeToTown(player.townId, eggs);
+  await game.towns.contributeToTown(player, player.townId, eggs);
 
   const town = await game.towns.getTown(player.townId);
 

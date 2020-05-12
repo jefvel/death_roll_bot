@@ -23,8 +23,7 @@ type TownList struct {
 	Towns []Town `json:"towns"`
 }
 
-func TownInfo(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
-  id := ps.ByName("id")
+func getTown(id string) (*Town, error) {
 
   sqlStatement := `SELECT id, name, currency, x, y FROM towns WHERE id=$1;`
   t := Town{}
@@ -32,10 +31,22 @@ func TownInfo(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
   row := db.QueryRow(sqlStatement, id)
 
   switch err := row.Scan(&t.Id, &t.Name, &t.Currency, &t.X, &t.Y); err {
+  case nil:
+    return &t, nil
+  default:
+    return nil, err
+  }
+}
+
+func TownInfo(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
+  id := ps.ByName("id")
+  town, err := getTown(id)
+
+  switch err {
   case sql.ErrNoRows:
 	fmt.Fprintf(w, "null")
   case nil:
-	s, _ := json.Marshal(t)
+	s, _ := json.Marshal(town)
 	w.Write(s)
   default:
 	panic(err)

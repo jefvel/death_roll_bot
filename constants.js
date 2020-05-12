@@ -11,6 +11,11 @@ module.exports = {
   worldHeight: 1000,
   townChangeCost: 2000,
   botName: 'Death Roll Man',
+  exp_per_egg: 0.01,
+  exp_per_win: 0.045,
+  exp_win_multiplier: 1.09,
+  exp_per_loss: 0.02,
+  exp_per_eat: 0.019,
   avatars: {
     bot: 'https://cdn.discordapp.com/avatars/668497383629389844/8eef75049f971a09116cbf646619e59d.png?size=512',
     town: 'https://cdn.discordapp.com/attachments/668497531742978100/677623504799006740/unknown.png?size=512',

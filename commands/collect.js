@@ -20,6 +20,8 @@ async function collect({ game, message }) {
     return;
   }
 
+  await db.incrementExp(message.author.id, res.collected * game.constants.exp_per_egg);
+
   message.reply(`You collected :egg:**${res.collected}** ${currency}, and now own a total of :egg:**${res.currency}** ${currency}!`).then((msg) => {
     if (!isDM) {
       setTimeout(() => { msg.delete(); }, 5000);
