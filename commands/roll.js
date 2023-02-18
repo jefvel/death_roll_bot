@@ -116,6 +116,11 @@ module.exports = {
     if (roll === 'all') {
       roll = userInfo.currency;
     }
+    
+    let maxRoll = 10000000000
+    if (roll > maxRoll) {
+      roll = maxRoll - 1;
+    }
 
     console.log({
       bet,
