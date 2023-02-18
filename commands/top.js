@@ -58,7 +58,7 @@ async function top({ command, message, args, game }) {
         emojiStr += numEmojis[parseInt(char)];
       }
     }
-    return `${emojiStr}**\`${cStr}\`** - [${u.username}](https://deathroll.net/player/${u.id})`;
+    return `${emojiStr}**\`${cStr}\`** - ${u.username}`;
   }).join('\n');
   const pageInfo = `\nPage **${page + 1}** of **${totalPages}**. Total Players: **${playerCount}**\n`;
 

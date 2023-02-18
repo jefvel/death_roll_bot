@@ -10,7 +10,6 @@ function generateUserInfoEmbed(info, items, town, levelInfo) {
     },
     author: {
       name: `${info.username}, The ${levelInfo.title} (Lvl. ${levelInfo.level})`,
-      url: `https://deathroll.net/player/${info.id}`,
       icon_url: levelInfo.avatarUrl,
     },
     fields: [
@@ -40,7 +39,7 @@ function generateUserInfoEmbed(info, items, town, levelInfo) {
   embed.fields.push({
     inline: true,
     name: ":cityscape: Town",
-    value: town ? `**[${town.name}](https://deathroll.net/map?town=${town.id})**` : "Not a member of a town.",
+    value: town ? `**${town.name}**` : "Not a member of a town.",
   });
 
   if (info.chickenCount > 0) {
