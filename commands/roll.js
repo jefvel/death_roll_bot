@@ -117,7 +117,7 @@ module.exports = {
       roll = userInfo.currency;
     }
     
-    let maxRoll = 10000000000
+    let maxRoll = 10000000000;
     if (roll > maxRoll) {
       roll = maxRoll - 1;
     }
