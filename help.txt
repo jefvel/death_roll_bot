@@ -2,26 +2,19 @@
 >>> This is a skill based game about betting and getting Ägg (:egg:)
 
 Every now and then I will put an :egg: into your personal basket.
-You can `d.collect` these, and invest them in various ways.
+You can `/collect` these, and invest them in various ways.
 
 **Available Commands**
 
 _Player Specific_
-* `d.collect` - Collects :egg: Ägg from your basket into your wallet
-* `d.roll [roll amount, random] [bet amount, a percentage (25%), all, random] [required]` - Start a new cool roll game. If `required` is defined, then no partial bets will be allowed.
-* `d.stats [@user/user]` - Show stats about yourself, or another player
-* `d.top [page]` - Show top players, paginated
-* `d.eat [egg amount, defaults to 1, the recommended serving size]` - Eat eggs
-* `d.records` - List various Ägg world records.
-* `d.store` - Open up the Ägg store. You can purchase things there.
+* `/collect` - Collects :egg: Ägg from your basket into your wallet
+* `/droll [roll amount, random] [bet amount, a percentage (25%), all, random] [required]` - Start a new cool roll game. If `required` is defined, then no partial bets will be allowed.
+* `/dstats [@user/user]` - Show stats about yourself, or another player
+* `/dtop [page]` - Show top players, paginated
+* `/eat [egg amount, defaults to 1, the recommended serving size]` - Eat eggs
+* `/eggrecords` - List various Ägg world records.
 
-_Town (Server) Specific_
-* `d.join` - Join the Town of the server. It is only possible to be a member of one town at a time.
-* `d.contribute [amount]` - Contribute to the current server's town eggs (Klägg). (Multiples of 500. 500 Ägg = 1 Klägg)
-* `d.town [?townname]` - Show info about the town.
-* `d.config` - **Create a town on your server. Server admin privileges required.**
-
-`Ägg Roll v0.4`
+`Ägg Roll v0.5`
 
 __Please note that this is an alpha and your :egg:Ägg might get deleted__
 

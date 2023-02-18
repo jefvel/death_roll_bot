@@ -1,12 +1,40 @@
 /**
  * invite link :
  * https://discordapp.com/oauth2/authorize?&client_id=668497383629389844&scope=bot&permissions=469837904
+ * https://discordapp.com/oauth2/authorize?&client_id=668497383629389844&scope=bot&permissions=285950897152
  */
 
 require('console-stamp')(console, 'HH:mm:ss');
 
+require('dotenv').config();
+
+const { env } = require('process');
+
+// Here we load the config.json file that contains our token and our prefix values.
+const config = {
+  prefix: env.DISCORD_PREFIX,
+  token: env.DISCORD_TOKEN,
+  applicationId: env.DISCORD_APPID,
+  databaseAddress: env.DB_ADDRESS,
+  database: env.DB_NAME,
+  username: env.DB_USERNAME,
+  password: env.DB_PASSWORD,
+};
+
+global.config = config;
+const fs = require('node:fs');
+const path = require('node:path');
+
 // Load up the discord.js library
-const Discord = require('discord.js');
+const {
+  Client,
+  GatewayIntentBits,
+  DMChannel,
+  Collection,
+  Events,
+  REST,
+  Routes,
+} = require('discord.js');
 
 const Database = require('./database.js');
 const ChickenSpawner = require('./chickenspawner.js');
@@ -24,18 +52,45 @@ const Notifications = require('./notifications');
 const logger = require('./logger');
 
 const numbers = [
-  'zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve', 'thirteen', 'fourteen',
-  'fifteen', 'sixteen', 'seventeen',
+  'zero',
+  'one',
+  'two',
+  'three',
+  'four',
+  'five',
+  'six',
+  'seven',
+  'eight',
+  'nine',
+  'ten',
+  'eleven',
+  'twelve',
+  'thirteen',
+  'fourteen',
+  'fifteen',
+  'sixteen',
+  'seventeen',
 ];
 
 // This is your client. Some people call it `bot`, some people call it `self`,
 // some might call it `cootchie`. Either way, when you see `client.something`, or `bot.something`,
 // this is what we're refering to. Your client.
-const client = new Discord.Client();
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.MessageContent,
+    GatewayIntentBits.GuildMembers,
+  ],
+});
 
-// Here we load the config.json file that contains our token and our prefix values.
-const config = require("./config.json");
-const constants = require("./constants.js");
+client.commands = new Collection();
+
+global.discordCommands = client.commands;
+global.registeredCommands = [];
+
+const constants = require('./constants.js');
 // config.token contains the bot's token
 // config.prefix contains the message prefix.
 
@@ -43,7 +98,7 @@ function updateStatus(stat) {
   if (stat) {
     client.user.setActivity(stat);
   } else {
-    client.user.setActivity(`type ${config.prefix}help for info`);
+    client.user.setActivity(`type /egghelp for info`);
   }
 }
 
@@ -57,65 +112,111 @@ let game = null;
 let deathRoll = null;
 let levels = null;
 
-client.on("ready", () => {
-    logger.info(`Bot has started, with ${client.users.size} users, in ${client.channels.size} channels of ${client.guilds.size} guilds.`);
+client.once(Events.ClientReady, async (c) => {
+  logger.info(
+    `Bot has started, with ${client.users.size} users, in ${client.channels.size} channels of ${client.guilds.size} guilds.`
+  );
 
-    updateStatus();
+  updateStatus();
 
-    db = new Database(client);
-    game = new Game(db, client, logger);
-    db.game = game;
+  db = new Database(client);
+  game = new Game(db, client, logger);
+  db.game = game;
 
-    towns = new Towns(db, client, game);
-    stats = new Stats(db, client, game);
-    items = new Items(db, client, game);
+  //towns = new Towns(db, client, game);
+  stats = new Stats(db, client, game);
+  items = new Items(db, client, game);
 
-    levels = new Levels(game);
+  levels = new Levels(game);
 
+  console.log('initing db');
+  await db.connect();
+  await items.sync();
+  await db.sync();
+  //await towns.sync();
+  console.log('initing stats');
+  await stats.sync();
+  console.log('initing items');
+
+  /*
     Promise.all([
       db.sync(),
-      towns.sync(),
-      stats.sync(),
-      items.sync(),
+      //towns.sync(),
+      //stats.sync(),
+      //items.sync(),
     ]).then(async () => {
-      chickens = new ChickenSpawner(client, db, game);
-      eggs = new Eggs(game, client);
-      deathRoll = new DeathRoll(game);
+      */
 
-      require('./commands/secret').registerCommands(game);
+  chickens = new ChickenSpawner(client, db, game);
+  eggs = new Eggs(game, client);
+  deathRoll = new DeathRoll(game);
 
-      game.config = config;
-      game.deathRoll = deathRoll;
-      game.eggs = eggs;
-      game.stats = stats;
-      game.towns = towns;
-      game.items = items;
-      game.chickens = chickens;
-      game.levels = levels;
+  require('./commands/secret').registerCommands(game);
 
-      registerCommands(game);
+  game.config = config;
+  game.deathRoll = deathRoll;
+  game.eggs = eggs;
+  game.stats = stats;
+  //game.towns = towns;
+  game.items = items;
+  game.chickens = chickens;
+  game.levels = levels;
 
-      game.inited = true;
+  registerCommands(game);
 
-      Notifications.init(game);
-    });
+  game.inited = true;
+
+  Notifications.init(game);
+
+  // Construct and prepare an instance of the REST module
+  const rest = new REST({ version: '10' }).setToken(config.token);
+
+  // and deploy your commands!
+  (async () => {
+    try {
+      console.log(
+        `Started refreshing ${global.registeredCommands.length} application (/) commands.`
+      );
+
+      console.log(global.registeredCommands);
+
+      // The put method is used to fully refresh all commands in the guild with the current set
+      const data = await rest.put(
+        Routes.applicationCommands(config.applicationId),
+        { body: global.registeredCommands }
+      );
+
+      console.log(
+        `Successfully reloaded ${data.length} application (/) commands.`
+      );
+    } catch (error) {
+      // And of course, make sure you catch and log any errors!
+      console.error(error);
+    }
+  })();
+
+  console.log('I have been initiated');
+  //});
 });
 
 function registerCommands(game) {
-  game.registerCommand('help', require('./commands/help'));
+  game.registerCommand('droll', require('./commands/roll'));
+  game.registerCommand('egghelp', require('./commands/egghelp'));
   game.registerCommand('store', require('./commands/store'));
 }
 
-client.on("guildCreate", guild => {
-    // This event triggers when the bot joins a guild.
-    logger.info(`New guild joined: ${guild.name} (id: ${guild.id}). This guild has ${guild.memberCount} members!`);
-    updateStatus();
+client.on('guildCreate', (guild) => {
+  // This event triggers when the bot joins a guild.
+  logger.info(
+    `New guild joined: ${guild.name} (id: ${guild.id}). This guild has ${guild.memberCount} members!`
+  );
+  updateStatus();
 });
 
-client.on("guildDelete", guild => {
-    // this event triggers when the bot is removed from a guild.
-    logger.info(`I have been removed from: ${guild.name} (id: ${guild.id})`);
-    updateStatus();
+client.on('guildDelete', (guild) => {
+  // this event triggers when the bot is removed from a guild.
+  logger.info(`I have been removed from: ${guild.name} (id: ${guild.id})`);
+  updateStatus();
 });
 
 let tempStatusTimeout = null;
@@ -135,9 +236,11 @@ const checkMark = '✅';
 const currency = 'Ägg';
 
 /**
-* runningGames contain GameRooms, with the channel ID as key
-*/
+ * runningGames contain GameRooms, with the channel ID as key
+ */
 const runningGames = {};
+
+global.runningGames = runningGames;
 
 class Player {
   user = null;
@@ -203,10 +306,17 @@ class GameRoom {
 
   gameCreator = null;
 
-  constructor(channel, rollAmount, bet, gameCreator, fullBetRequired) {
+  interaction = null;
+
+  constructor(interaction, rollAmount, bet, gameCreator, fullBetRequired) {
+    let channelId = interaction.channelId;
+
+    this.interaction = interaction;
+
     this.players = [];
-    this.gameCreator = gameCreator;
-    this.channel = channel;
+    console.log(gameCreator);
+    this.gameCreator = gameCreator; //client.users.cache.get(gameCreator);
+    this.channel = client.channels.cache.get(channelId);
     this.rollAmount = rollAmount;
     this.bet = bet;
     this.fullBetRequired = fullBetRequired;
@@ -220,11 +330,15 @@ class GameRoom {
     this.players = [];
     this.userQueue = [];
     this.eventLog = [];
-    this.channel.send(this.getTitleText() + ':timer:').then(msg => {
-      msg.react(dice);
-      this.gameMessage = msg;
-      this.waitForPlayersTick();
-    });
+    this.interaction
+      .reply(this.getTitleText() + ':timer:')
+      .then(async ({ interaction }) => {
+        const message = await interaction.fetchReply();
+        this.gameMessage = message;
+        this.interaction = interaction;
+        this.gameMessage.react(dice);
+        this.waitForPlayersTick();
+      });
   }
 
   getTitleText() {
@@ -234,56 +348,79 @@ class GameRoom {
     return `>>> Playing Death Roll for **${this.rollAmount}**. The bet is :egg:**${this.bet}** ${currency}.\n\n`;
   }
 
-  waitForPlayersTick() {
+  async waitForPlayersTick() {
     const message = this.gameMessage;
 
-    this.waitingForPlayersTimeLeft --;
-    this.waitingTick ++;
+    this.waitingForPlayersTimeLeft--;
+    this.waitingTick++;
     if (this.waitingTick >= loadingClock.length) {
       this.waitingTick = 0;
     }
 
-    let collected = message.reactions;
-    let reacts = collected.find(e => e.emoji.name === dice);
+    /*
+    const messageReacted = await client.channels.cache
+      .get(this.channel.id)
+      .messages.fetch(this.gameMessage.id);
+
+    messageReacted.reactions.cache.forEach(async(reaction) => {
+        const emojiName = reaction._emoji.name
+        const emojiCount = reaction.count
+        const reactionUsers = await reaction.users.fetch();
+    });
+    */
+
+    let collected = message.reactions.cache;
+    let reacts = collected.find((e) => e.emoji.name === dice);
     let users = [];
 
     if (reacts != null) {
-        users = reacts.users.filter(user => { return !user.bot; }).array();
+      console.log(reacts.map);
+      let fetchedUsers = await reacts.users.fetch();
+      let usermap = Array.from(fetchedUsers.values());
+      users = usermap.filter((user) => {
+        return !user.bot && user.id;
+      });
+
+      console.log(users);
     }
 
-    if (users.find(u => u.id == this.gameCreator.id) == null) {
+    if (users.find((u) => u.id == this.gameCreator.id) == null) {
       users.push(this.gameCreator);
     }
 
     if (users.length > this.userQueue.length) {
-        this.waitingForPlayersTimeLeft += 1;
+      this.waitingForPlayersTimeLeft += 1;
     }
 
     this.userQueue = users;
 
     if (this.waitingForPlayersTimeLeft <= 0) {
-        this.startGame();
-        return;
+      this.startGame();
+      return;
     }
 
     let title = 'Waiting for players, please click the reaction to join.\n';
     let userInfo = '';
 
     if (users.length > 0) {
-        userInfo = 'Players:\n';
-        userInfo += users.map((u, index) => `**${index + 1}**: *${u.username}*`).join('\n');
+      userInfo = 'Players:\n';
+      userInfo += users
+        .map(function (u, index) {
+          return `**${index + 1}**: *${u.username}*`;
+        })
+        .join('\n');
     }
 
     let joinInfo = '';
     if (users.length > 1 && this.waitingForPlayersTimeLeft > 3) {
       joinInfo = `\nClick the ${checkMark} to start the game directly`;
 
-      const readyUsers = this.getUsersByReaction(checkMark);
+      const readyUsers = await this.getUsersByReaction(checkMark);
       if (readyUsers) {
         let readyCount = 0;
         for (const user of users) {
-          if (readyUsers.find(u => u.id === user.id)) {
-            readyCount ++;
+          if (readyUsers.find((u) => u.id === user.id)) {
+            readyCount++;
           }
         }
         if (readyCount == users.length) {
@@ -306,35 +443,48 @@ class GameRoom {
 
     let clock = loadingClock[this.waitingTick];
     let secondsLeft = this.waitingForPlayersTimeLeft;
-    const lastCountdown = [':zero:', ':one:', ':two:', ':three:', ':four:', ':five:', ':six:', ':seven:', ':eight:', ':nine:'];
+    const lastCountdown = [
+      ':zero:',
+      ':one:',
+      ':two:',
+      ':three:',
+      ':four:',
+      ':five:',
+      ':six:',
+      ':seven:',
+      ':eight:',
+      ':nine:',
+    ];
     if (this.waitingForPlayersTimeLeft < lastCountdown.length) {
       clock = lastCountdown[this.waitingForPlayersTimeLeft];
       secondsLeft = '';
     }
 
-    const timeLeft = `${secondsLeft} ${this.waitingForPlayersTimeLeft > 1 ? 'seconds' : 'second'} left`;
+    const timeLeft = `${secondsLeft} ${
+      this.waitingForPlayersTimeLeft > 1 ? 'seconds' : 'second'
+    } left`;
 
-    message.edit(`${titleText}${title}${clock} ${timeLeft}\n${userInfo}${joinInfo}`).then(msg => {
-        this.gameMessage = msg;
-        setTimeout(this.waitForPlayersTick.bind(this), 1000);
-    })
+    await this.editMessage(
+      `${titleText}${title}${clock} ${timeLeft}\n${userInfo}${joinInfo}`
+    );
+    setTimeout(this.waitForPlayersTick.bind(this), 1000);
   }
 
-  getUsersByReaction(reaction) {
-    let collected = this.gameMessage.reactions;
-    let reacts = collected.find(e => e.emoji.name === reaction);
+  async getUsersByReaction(reaction) {
+    let collected = this.gameMessage.reactions.cache;
+    let reacts = collected.find((e) => e.emoji.name === reaction);
     if (reacts) {
-      let users = reacts.users;
-      let userArray = users.array();
-      return userArray || null;
+      let fetchedUsers = await reacts.users.fetch();
+      let users = Array.from(fetchedUsers.values());
+      return users || null;
     }
 
-    return null
+    return null;
   }
 
   clearReactionsByType(reaction) {
-    let collected = this.gameMessage.reactions;
-    let reacts = collected.find(e => e.emoji.name === reaction);
+    let collected = this.gameMessage.reactions.cache;
+    let reacts = collected.find((e) => e.emoji.name === reaction);
     if (reacts) {
       reacts.remove();
     }
@@ -342,20 +492,28 @@ class GameRoom {
 
   clearUserReactions() {
     const filter = (reaction, user) => !user.bot;
-    var r = this.gameMessage.reactions.find(filter);
+    let collected = this.gameMessage.reactions.cache;
+    var r = collected.find(filter);
     if (r != null) {
-      let users = r.users;
-      let userArray = users.array();
+      let users = r.users.cache;
+      let userArray = Array.from(users.values());
       if (!userArray) {
         return;
       }
 
       for (var user of userArray) {
-        if (user.id !== client.user.id) {
-          r.remove(user);
+        //if (user.id !== client.user.id) {
+        if (!user.bot) {
+          r.users.remove(user);
         }
       }
     }
+  }
+
+  async editMessage(msg) {
+    await this.interaction.editReply(msg);
+    //let newMessage = await this.interaction.fetchReply();
+    //this.gameMessage = newMessage;
   }
 
   async startGame() {
@@ -363,7 +521,7 @@ class GameRoom {
 
     if (this.userQueue.length <= 1) {
       logger.info(`Not enough players joined on channel ${this.channel.name}`);
-      this.gameMessage.edit(`${this.getTitleText()} Not enough players joined.`);
+      this.editMessage(`${this.getTitleText()} Not enough players joined.`);
       this.finishGame();
       return;
     }
@@ -372,12 +530,14 @@ class GameRoom {
 
     logger.info(`Starting game on channel ${this.channel.name}`);
 
-    this.gameMessage.clearReactions().then(() => this.gameMessage.react(dice));
+    this.gameMessage.reactions
+      .removeAll()
+      .then(() => this.gameMessage.react(dice));
     this.currentMaxRoll = this.rollAmount;
 
     // Randomize player list
     this.userQueue = this.userQueue.sort(() => Math.random() - 0.5);
-    this.players = this.userQueue.map(user => {
+    this.players = this.userQueue.map((user) => {
       return new Player(user);
     });
 
@@ -389,7 +549,9 @@ class GameRoom {
       this.cancelGame();
       this.finishGame();
       logger.info(`Too few players with ${currency} to bet`);
-      this.gameMessage.edit(`${this.getTitleText()} Too few players with ${currency}. Cancelling game.`);
+      this.editMessage(
+        `${this.getTitleText()} Too few players with ${currency}. Cancelling game.`
+      );
       return;
     }
 
@@ -398,17 +560,21 @@ class GameRoom {
 
     pot *= this.players.length;
 
-    stats.updateStatIfHigher(
-      stats.statsKeys.biggestPot,
-      pot,
-      `:eggplant: Biggest Bet`, `**${this.gameCreator.username}** hosted a game in which the winner will get at least :egg:**${pot}**!`,
-    ).then(record => {
-      if (record.changed) {
-        stats.broadcastNewRecord(record.stat, this.channel);
-      }
-    });
+    stats
+      .updateStatIfHigher(
+        stats.statsKeys.biggestPot,
+        pot,
+        `:eggplant: Biggest Bet`,
+        `**${this.gameCreator.username}** hosted a game in which the winner will get at least :egg:**${pot}**!`
+      )
+      .then((record) => {
+        if (record.changed) {
+          //stats.broadcastNewRecord(record.stat, this.channel);
+        }
+      });
 
-    this.refreshDisplay();
+    await this.refreshDisplay();
+
     this.listenToPlayers();
     this.resetAutoRollTimer();
     this.clearReactionsByType(checkMark);
@@ -417,10 +583,12 @@ class GameRoom {
   }
 
   async sendStartMessage() {
-    const ids = this.players.map(p => `<@${p.id}>`).join(' ');
+    const ids = this.players.map((p) => `<@${p.id}>`).join(' ');
     const message = `Game started! :point_right:[${ids}]:point_left:`;
     const msg = await this.channel.send(message);
-    setTimeout(() => { msg.delete(); }, 5000);
+    setTimeout(() => {
+      msg.delete();
+    }, 5000);
   }
 
   resetAutoRollTimer() {
@@ -450,7 +618,7 @@ class GameRoom {
       clearTimeout(this.autoRollTimer);
     }
 
-    this.gameMessage.clearReactions();
+    this.gameMessage.reactions.removeAll();
   }
 
   async placeBets() {
@@ -471,7 +639,7 @@ class GameRoom {
       player.bet = bet;
     }
 
-    this.players = this.players.filter(p => !p.eliminated);
+    this.players = this.players.filter((p) => !p.eliminated);
   }
 
   cancelGame() {
@@ -485,7 +653,7 @@ class GameRoom {
   }
 
   doleOutEggs() {
-    const losingPlayers = this.players.filter(p => p.eliminated);
+    const losingPlayers = this.players.filter((p) => p.eliminated);
     let totalPot = 0;
     for (let p of this.players) {
       totalPot += p.bet;
@@ -496,7 +664,7 @@ class GameRoom {
     const winningPlayer = this.players[0];
     for (let player of winningPlayerQueue) {
       let amountCanWin = Math.min(player.bet * loserCount, totalPot);
-      loserCount --;
+      loserCount--;
       totalPot -= amountCanWin;
 
       if (amountCanWin < 0) {
@@ -520,7 +688,9 @@ class GameRoom {
 
         db.deposit(player.user, amountCanWin);
 
-        logger.info(`Paid :egg:${amountCanWin} ${currency} to ${player.user.username}`);
+        logger.info(
+          `Paid :egg:${amountCanWin} ${currency} to ${player.user.username}`
+        );
         let msg = `Paid :egg:${amountCanWin} ${currency} to ${player.user.username}`;
         if (winningPlayer == player) {
           msg += ` (**Winner**)`;
@@ -528,7 +698,6 @@ class GameRoom {
 
         this.eventLog.push(msg);
       }
-
 
       if (player == this.winningPlayer) {
         game.dispatchEvent({
@@ -554,13 +723,14 @@ class GameRoom {
           player,
           lostEggs,
         });
-
       }
     }
   }
 
   gameWon() {
-    this.players = this.players.sort((a, b) => a.finalPlacement - b.finalPlacement);
+    this.players = this.players.sort(
+      (a, b) => a.finalPlacement - b.finalPlacement
+    );
     tempStatus(`${this.players[0].username} won a roll!`);
     if (this.bet > 0) {
       this.doleOutEggs();
@@ -571,7 +741,7 @@ class GameRoom {
     var c = Math.min(4, this.eventLog.length);
     var logsMsg = '\n----------\n';
 
-    for (var i = 0; i < c; i ++) {
+    for (var i = 0; i < c; i++) {
       logsMsg += this.eventLog[this.eventLog.length - c + i] + '\n';
     }
 
@@ -589,25 +759,26 @@ class GameRoom {
     return `\nCurrent Roll: **${this.currentMaxRoll}**`;
   }
 
-  refreshDisplay() {
+  async refreshDisplay() {
     const log = this.getLatestLogs();
     const title = this.getTitleText();
     const players = this.getPlayerInfoList();
     const rollInfo = this.getCurrentMaxRollInfo();
 
-    this.gameMessage.edit(`${title}${players}${log}${rollInfo}`);
+    await this.editMessage(`${title}${players}${log}${rollInfo}`);
   }
 
   killCurrentPlayer() {
     var player = this.players[this.currentPlayerIndex];
     player.lives = 0;
     player.eliminated = true;
-    player.finalPlacement = this.players.filter(e => !e.eliminated).length - 1;
+    player.finalPlacement =
+      this.players.filter((e) => !e.eliminated).length - 1;
 
     let loseMessage = `, and was eliminated :skull:`;
 
-    let gameFinished = this.players.filter(p => !p.eliminated).length === 1;
-    let winningPlayerIndex = this.players.findIndex(e => !e.eliminated);
+    let gameFinished = this.players.filter((p) => !p.eliminated).length === 1;
+    let winningPlayerIndex = this.players.findIndex((e) => !e.eliminated);
 
     if (gameFinished) {
       this.gameCompleted = true;
@@ -615,21 +786,23 @@ class GameRoom {
       this.winningPlayer = winningPlayer;
     }
 
-    let winMessage = gameFinished ? `\n**${this.players[winningPlayerIndex].username}** won!` : '';
+    let winMessage = gameFinished
+      ? `\n**${this.players[winningPlayerIndex].username}** won!`
+      : '';
 
     if (winMessage !== '') {
       this.finishGame();
     }
 
-    return (`${loseMessage}${winMessage}`);
+    return `${loseMessage}${winMessage}`;
   }
 
   doRoll(automated) {
     let player = this.players[this.currentPlayerIndex];
 
-    this.rollCount ++;
+    this.rollCount++;
 
-    let roll = 1 + Math.floor((Math.random() * this.currentMaxRoll));
+    let roll = 1 + Math.floor(Math.random() * this.currentMaxRoll);
     let modulatedRoll = roll;
 
     var killMessage = '';
@@ -638,7 +811,7 @@ class GameRoom {
     var livesExhausted = false;
 
     if (automated) {
-      player.lives --;
+      player.lives--;
       if (player.lives < 0) {
         player.lives = 0;
         modulatedRoll = 0;
@@ -649,19 +822,27 @@ class GameRoom {
     }
 
     if (this.currentMaxRoll === modulatedRoll) {
-      this.sameRollStreak ++;
+      this.sameRollStreak++;
     } else {
       if (this.sameRollStreak > 0) {
-        const playerNames = this.players.filter(p => !p.eliminated).map(p => p.username).join(', ');
-        stats.updateStatIfHigher(
-          stats.statsKeys.longestRollStreak,
-          this.sameRollStreak,
-          `:game_die: Longest Roll Streak`, `**${playerNames}** rolled **${this.currentMaxRoll}** **${numbers[this.sameRollStreak + 1]}** times in a row!`,
-        ).then(record => {
-          if (record.changed) {
-            stats.broadcastNewRecord(record.stat, this.channel);
-          }
-        });
+        const playerNames = this.players
+          .filter((p) => !p.eliminated)
+          .map((p) => p.username)
+          .join(', ');
+        stats
+          .updateStatIfHigher(
+            stats.statsKeys.longestRollStreak,
+            this.sameRollStreak,
+            `:game_die: Longest Roll Streak`,
+            `**${playerNames}** rolled **${this.currentMaxRoll}** **${
+              numbers[this.sameRollStreak + 1]
+            }** times in a row!`
+          )
+          .then((record) => {
+            if (record.changed) {
+              stats.broadcastNewRecord(record.stat, this.channel);
+            }
+          });
       }
       this.sameRollStreak = 0;
     }
@@ -690,32 +871,38 @@ class GameRoom {
       killMessage = this.killCurrentPlayer();
 
       if (!automated) {
-        stats.updateStatIfHigher(
-          stats.statsKeys.biggestRollDeath,
-          this.currentMaxRoll,
-          `:skull: Biggest Roll of Death`, `**${player.username}** rolled **1** out of **${this.currentMaxRoll}**!`
-        ).then(record => {
-          if (record.changed) {
-            stats.broadcastNewRecord(record.stat, this.channel);
-          }
-        });
+        stats
+          .updateStatIfHigher(
+            stats.statsKeys.biggestRollDeath,
+            this.currentMaxRoll,
+            `:skull: Biggest Roll of Death`,
+            `**${player.username}** rolled **1** out of **${this.currentMaxRoll}**!`
+          )
+          .then((record) => {
+            if (record.changed) {
+              stats.broadcastNewRecord(record.stat, this.channel);
+            }
+          });
       }
     }
 
     if (!automated && modulatedRoll === 2) {
-      stats.updateStatIfHigher(
-        stats.statsKeys.biggestSuddenEgg,
-        this.currentMaxRoll,
-        `:100: Biggest Sudden Ägg`, `**${player.username}** rolled **2** out of **${this.currentMaxRoll}**!`
-      ).then(record => {
-        if (record.changed) {
-          stats.broadcastNewRecord(record.stat, this.channel);
-        }
-      });
+      stats
+        .updateStatIfHigher(
+          stats.statsKeys.biggestSuddenEgg,
+          this.currentMaxRoll,
+          `:100: Biggest Sudden Ägg`,
+          `**${player.username}** rolled **2** out of **${this.currentMaxRoll}**!`
+        )
+        .then((record) => {
+          if (record.changed) {
+            stats.broadcastNewRecord(record.stat, this.channel);
+          }
+        });
     }
 
     while (true) {
-      this.currentPlayerIndex ++;
+      this.currentPlayerIndex++;
       if (this.currentPlayerIndex >= this.players.length) {
         this.currentPlayerIndex = 0;
       }
@@ -759,54 +946,62 @@ class GameRoom {
   }
 
   getPlayerInfoList() {
-    const onlyOneAlive = this.players.filter(e => !e.eliminated).length == 1;
+    const onlyOneAlive = this.players.filter((e) => !e.eliminated).length == 1;
 
-    let userOrder = this.players.map((u, index) => {
-      let hearts = '';
-      for (var i = 0; i < constants.playerLives; i ++) {
-        if (i < u.lives) {
-          hearts += ':heart:';
-        } else {
-          hearts += ':black_heart:';
+    let userOrder = this.players
+      .map((u, index) => {
+        let hearts = '';
+        for (var i = 0; i < constants.playerLives; i++) {
+          if (i < u.lives) {
+            hearts += ':heart:';
+          } else {
+            hearts += ':black_heart:';
+          }
         }
-      }
 
-      let spaces = index < 9 ? ' ' : '';
-      let info = `**\`${spaces}${(index + 1)}\`**: ${hearts} *${u.username}* `;
+        let spaces = index < 9 ? ' ' : '';
+        let info = `**\`${spaces}${index + 1}\`**: ${hearts} *${u.username}* `;
 
-      if (!this.gameCompleted) {
-        if (index == this.currentPlayerIndex) {
-          info = `__${info}__ :point_left:`;
+        if (!this.gameCompleted) {
+          if (index == this.currentPlayerIndex) {
+            info = `__${info}__ :point_left:`;
+          }
         }
-      }
 
-      if (onlyOneAlive) {
-        if (!u.eliminated) {
-          info = `${info} :crown:`;
+        if (onlyOneAlive) {
+          if (!u.eliminated) {
+            info = `${info} :crown:`;
+          }
         }
-      }
 
-      if (u.eliminated) {
-        info = `~~${info}~~ :skull:`;
-      }
+        if (u.eliminated) {
+          info = `~~${info}~~ :skull:`;
+        }
 
-      return info;
-    }).join('\n');
+        return info;
+      })
+      .join('\n');
 
     const title = 'Player Order:\n';
     return title + userOrder + '\n';
   }
 
   listenToPlayers() {
-    const filter = (reaction, user) => reaction.emoji.name === dice && !user.bot;
-    this.reactionCollector = this.gameMessage.createReactionCollector(filter);
+    const filter = (reaction, user) => {
+      return reaction.emoji.name === dice && !user.bot;
+    };
 
-    this.reactionCollector.on('collect', r => {
-      let users = r.users;
+    this.reactionCollector = this.gameMessage.createReactionCollector({
+      filter,
+    });
+
+    this.reactionCollector.on('collect', (r, user) => {
+      //let users = r.users;
       let player = this.players[this.currentPlayerIndex];
       var nextId = player.id;
 
-      if (users.get(nextId) != null) {
+      if (user.id == nextId) {
+        //if (users.get(nextId) != null) {
         // let player = this.players[this.currentPlayerIndex];
         this.doRoll();
       } else {
@@ -816,13 +1011,35 @@ class GameRoom {
       this.clearUserReactions();
     });
 
-    this.reactionCollector.on('end', collected => logger.info(`Collected ${collected.size} items`));
+    this.reactionCollector.on('end', (collected) =>
+      logger.info(`Collected ${collected.size} items`)
+    );
   }
 }
 
+client.on(Events.InteractionCreate, async (interaction) => {
+  console.log('interaction');
+  if (!interaction.isChatInputCommand()) return;
 
-client.on("message", async message => {
+  const command = interaction.client.commands.get(interaction.commandName);
+
+  if (!command) {
+    console.error(`No command matching ${interaction.commandName} was found.`);
+    return;
+  }
+
+  try {
+    await command.execute({ interaction, game });
+  } catch (error) {
+    console.error(`Error executing ${interaction.commandName}`);
+    console.error(error);
+  }
+});
+
+client.on('message', async (message) => {
   if (message.author.bot) return;
+
+  console.log(message);
 
   // Ensure player exists
   const player = await db.getUser(message.author.id, true);
@@ -845,14 +1062,18 @@ client.on("message", async message => {
 
   const command = args.shift().toLowerCase();
 
-  logger.info(`${message.author.username} entered command: >>> ${command} ${args.join(', ')}`);
+  logger.info(
+    `${message.author.username} entered command: >>> ${command} ${args.join(
+      ', '
+    )}`
+  );
 
   if (game !== null && game.inited) {
     game.runCommand(command, args, message, player);
   }
 
   if (command === 'roll') {
-    if (message.channel instanceof Discord.DMChannel) {
+    if (message.channel instanceof DMChannel) {
       message.reply("You can't deathroll with yourself.");
       return;
     }
@@ -899,7 +1120,9 @@ client.on("message", async message => {
     }
 
     if (roll <= 1 || bet < 0) {
-      message.reply('To start the game, type `' + config.prefix + 'roll [roll amount (default: 100)] [bet amount (default: 0)]`')
+      message.reply(
+        'To start the game, type `/droll [roll amount (default: 100)] [bet amount (default: 0)]`'
+      );
     } else {
       const userInfo = await db.getUser(message.author.id, true);
 
@@ -915,12 +1138,26 @@ client.on("message", async message => {
         roll = userInfo.currency;
       }
 
-      runningGames[message.channel.id] = new GameRoom(message.channel, roll, bet, message.author, required);
+      runningGames[message.channel.id] = new GameRoom(
+        message.channel,
+        roll,
+        bet,
+        message.author,
+        required
+      );
     }
   }
 });
 
-client.login(config.token);
+global.startGameRoom = function (interaction, roll, bet, author, required) {
+  runningGames[interaction.channelId] = new GameRoom(
+    interaction,
+    roll,
+    bet,
+    author,
+    required
+  );
+};
 
 const readline = require('readline').createInterface({
   input: process.stdin,
@@ -935,7 +1172,7 @@ function question() {
     if (cmd === 'say') {
       const msg = command.substr(4);
       if (msg.length > 0) {
-        towns.broadcastMessage(msg);
+        // towns.broadcastMessage(msg);
       }
     }
 
@@ -945,3 +1182,4 @@ function question() {
 
 // question();
 
+client.login(config.token);

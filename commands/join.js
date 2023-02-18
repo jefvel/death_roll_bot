@@ -74,7 +74,7 @@ Type \`join\` to confirm. Typing anything else will cancel.`,
     ]
   };
 
-  message.author.send({ embed });
+  message.author.send({ embeds: [embed] });
 
   new TownJoinPrompt(message.author, game, message);
 }

@@ -1,10 +1,22 @@
+const { EmbedBuilder } = require('discord.js');
 const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
 
 function generateItemEmbed(item) {
   const { name, description, avatar_url, emoji } = item;
   const title = `${emoji} ${name}`;
-  const embed = {
+  const embed = new EmbedBuilder()
+    .setColor(6500297)
+    .setTitle('Congratulations, you got an item!')
+    .setThumbnail(avatar_url ? avatar_url : "https://cdn.discordapp.com/avatars/668497383629389844/8eef75049f971a09116cbf646619e59d.png")
+    .addFields(
+      {
+        name: title,
+        value: description,
+      }
+    );
+  
+  /*{
     title: 'Congratulations, you got an item!',
     color: 6500297,
     thumbnail: {
@@ -17,7 +29,8 @@ function generateItemEmbed(item) {
       }
     ]
   };
-  return { embed };
+  */
+  return { embeds: [embed] };
 }
 
 class Items {
@@ -52,6 +65,8 @@ class Items {
 
     this.playerItems = db.sequelize.define('player_items', {
     });
+    this.items.belongsToMany(db.players, {through: this.playerItems});
+    db.players.belongsToMany(this.items, {through: this.playerItems});
 
     /*
     this.items.belongsTo(db.players, {
@@ -59,8 +74,6 @@ class Items {
     });
     */
 
-    this.items.belongsToMany(db.players, {through: this.playerItems});
-    db.players.belongsToMany(this.items, {through: this.playerItems});
 
     this.game = game;
   }

@@ -1,4 +1,5 @@
 const constants = require('./constants.js');
+const { SlashCommandBuilder } = require('discord.js');
 
 
 /**
@@ -23,8 +24,24 @@ class Game {
 
   constants = constants;
 
-  registerCommand(command, callback) {
-    this.commands[command.toLowerCase()] = callback;
+  registerCommand(command, info) {
+    if (!info.data) {
+      return;
+    }
+
+    global.discordCommands.set(command, info);
+    global.registeredCommands.push(info.data.toJSON());
+    
+    /*
+    new SlashCommandBuilder()
+      .setName(command)
+      .setDescription('ea'),
+      async execute(interaction) {
+
+      });
+
+*/
+    //this.commands[command.toLowerCase()] = callback;
   }
 
   runCommand(command, args, message, player) {

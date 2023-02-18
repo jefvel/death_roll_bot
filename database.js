@@ -3,7 +3,6 @@ const Sequelize = require('sequelize');
 const Op = Sequelize.Op;
 
 // Here we load the config.json file that contains our token and our prefix values.
-const config = require("./config.json");
 
 /*
 const sequelize = new Sequelize('database', 'user', 'password', {
@@ -14,14 +13,19 @@ const sequelize = new Sequelize('database', 'user', 'password', {
   storage: 'database.sqlite',
 });
 */
+  
+config = global.config;
 
-const sequelize = new Sequelize('deathroll', 'postgres', null, {
-  host: '0.0.0.0',
+const sequelize = new Sequelize(`postgres://${config.username}:${config.password}@${config.databaseAddress}/${config.database}?ssl=true`);
+/*
+  config.database, config.username, config.password, {
+  host: config.databaseAddress,
   dialect: 'postgres',
-  logging: false,
+  logging: false, //console.log,
   // SQLite only
   //storage: 'database.sqlite',
 });
+*/
 
 const Players = sequelize.define('players', {
   id: {
@@ -105,14 +109,23 @@ class Database {
     this.discord = discordClient;
   }
 
-  sync() {
-    return Promise.all([
-      Players.sync({ alter }),
-    ]);
+  async connect() {
+    console.log("conna auth");
+    try {
+      await sequelize.authenticate();
+    } catch(error) {
+      console.log("auth error");
+      console.error(error);
+    }
+    console.log("autneitcated");
+  }
+
+  async sync() {
+    await Players.sync({ alter });
   }
 
   async createUser(id) {
-    const user = await this.discord.fetchUser(id, true);
+    const user = await this.discord.users.fetch(id, true);
 
     const usr = await Players.create({ id: user.id, username: user.username });
     return usr.get({ plain: true });
@@ -243,7 +256,7 @@ class Database {
 
     const result = Promise.all(users.map(async (u) => {
       if (u.username === null) {
-        const user = await this.discord.fetchUser(u.id);
+        const user = await this.discord.users.fetch(u.id);
         u.username = user.username;
         this.setUsername(u.id, u.username);
       }
@@ -306,7 +319,7 @@ class Database {
     const player = await Players.findOne({ where: { id }, raw: true });
     if (player) {
       if (!player.username) {
-        const user = await this.discord.fetchUser(id, true);
+        const user = await this.discord.users.fetch(id, true);
         player.username = user.username;
       }
       return player;

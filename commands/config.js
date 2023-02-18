@@ -29,7 +29,7 @@ class ConfigPrompt extends FormPrompt {
       return;
     }
 
-    this.sendMessage('First off, you need to choose the town channel. This is where town/world announcements will be sent\n');
+    this.sendMessage('First off, you need to choose the game channel.\n');
     this.sendMessage(channelList.map((c, i) => `\`${i+1}\`. **${c.name}**`).join('\n') + '\n');
     this.sendMessage('Type in the number of the channel name you want to use.');
   }
@@ -38,9 +38,6 @@ class ConfigPrompt extends FormPrompt {
     switch (this.currentStep) {
       case 0:
         this.selectChannel(msg);
-        return;
-      case 1:
-        this.confirmCreate(msg);
         return;
     }
   }
@@ -59,6 +56,7 @@ class ConfigPrompt extends FormPrompt {
     this.currentStep = 1;
   }
 
+  /*
   async confirmCreate(msg) {
     if (msg.content !== 'yes') {
       this.sendMessage('All right. Skipping town founding for now.');
@@ -77,8 +75,10 @@ class ConfigPrompt extends FormPrompt {
       return;
     }
 
-    this.sendMessage(`Very cool! The town **${this.guild.name}** has been founded! People can now join it by typing \`d.join\` on the server.`);
+    //this.sendMessage(`Very cool! The town **${this.guild.name}** has been founded! People can now join it by typing \`d.join\` on the server.`);
+    this.sendMessage('Very cool, it is all set up!');
   }
+  */
 }
 
 function config({ game, message }) {
