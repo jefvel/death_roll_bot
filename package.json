@@ -5,6 +5,9 @@
   "main": "index.js",
   "license": "MIT",
   "private": true,
+  "scripts": {
+    "start": "node index.js"
+  },
   "dependencies": {
     "console-stamp": "^0.2.9",
     "discord.js": "^14.7.1",
