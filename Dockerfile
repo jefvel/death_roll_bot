@@ -11,4 +11,5 @@ RUN npm install
 # RUN npm ci --only=production
 # Bundle app source
 COPY . .
+EXPOSE 80
 CMD [ "node", "index.js" ]
