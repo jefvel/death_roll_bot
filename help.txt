@@ -7,12 +7,12 @@ You can `/collect` these, and invest them in various ways.
 **Available Commands**
 
 _Player Specific_
-* `/collect` - Collects :egg: Ägg from your basket into your wallet
-* `/roll [roll amount, random] [bet amount, a percentage (25%), all, random] [required]` - Start a new cool roll game. If `required` is defined, then no partial bets will be allowed.
-* `/stats [@user/user]` - Show stats about yourself, or another player
-* `/top [page]` - Show top players, paginated
-* `/eat [egg amount, defaults to 1, the recommended serving size]` - Eat eggs
-* `/records` - List various Ägg world records.
+* `/eggcollect` - Collects :egg: Ägg from your basket into your wallet
+* `/eggroll [roll amount, random] [bet amount, a percentage (25%), all, random] [required]` - Start a new cool roll game. If `required` is defined, then no partial bets will be allowed.
+* `/eggstats [@user/user]` - Show stats about yourself, or another player
+* `/eggtop [page]` - Show top players, paginated
+* `/eggeat [egg amount, defaults to 1, the recommended serving size]` - Eat eggs
+* `/eggrecords` - List various Ägg world records.
 
 `Ägg Roll v0.5`
 
