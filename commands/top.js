@@ -17,7 +17,7 @@ const blueSquare = '🟦';
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('top')
+    .setName('eggtop')
     .addNumberOption((option) =>
       option
         .setName('page')

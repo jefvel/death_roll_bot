@@ -9,8 +9,8 @@ class Eggs {
   }
 
   registerCommands(game) {
-    game.registerCommand('eat', require('./commands/eat'));
-    game.registerCommand('collect', require('./commands/collect'));
+    game.registerCommand('eggeat', require('./commands/eat'));
+    game.registerCommand('eggcollect', require('./commands/collect'));
   }
 
   startEggTicker() {

@@ -2,7 +2,7 @@ const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('records')
+    .setName('eggrecords')
     .setDescription('List the greatest records that have happened in the game'),
   async execute({ interaction, game }) {
     const stats = game.stats;

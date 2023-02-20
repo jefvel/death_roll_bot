@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('collect')
+    .setName('eggcollect')
     .setDescription('Gather uncollected eggs'),
   async execute({ interaction, game }) {
     const { db, constants: { currency } } = game;

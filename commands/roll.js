@@ -2,7 +2,7 @@ const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('roll')
+    .setName('eggroll')
     .setDMPermission(false)
     .addStringOption((option) =>
       option

@@ -200,7 +200,7 @@ client.once(Events.ClientReady, async (c) => {
 });
 
 function registerCommands(game) {
-  game.registerCommand('roll', require('./commands/roll'));
+  game.registerCommand('eggroll', require('./commands/roll'));
   game.registerCommand('egghelp', require('./commands/egghelp'));
   game.registerCommand('store', require('./commands/store'));
 }
