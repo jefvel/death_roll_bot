@@ -200,7 +200,7 @@ client.once(Events.ClientReady, async (c) => {
 });
 
 function registerCommands(game) {
-  game.registerCommand('droll', require('./commands/roll'));
+  game.registerCommand('roll', require('./commands/roll'));
   game.registerCommand('egghelp', require('./commands/egghelp'));
   game.registerCommand('store', require('./commands/store'));
 }
@@ -1121,7 +1121,7 @@ client.on('message', async (message) => {
 
     if (roll <= 1 || bet < 0) {
       message.reply(
-        'To start the game, type `/droll [roll amount (default: 100)] [bet amount (default: 0)]`'
+        'To start the game, type `/roll [roll amount (default: 100)] [bet amount (default: 0)]`'
       );
     } else {
       const userInfo = await db.getUser(message.author.id, true);

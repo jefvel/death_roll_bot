@@ -2,18 +2,18 @@ const { SlashCommandBuilder } = require('discord.js');
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('droll')
+    .setName('roll')
     .setDMPermission(false)
     .addStringOption((option) =>
       option
         .setName('roll')
-        .setDescription('the starting value of the roll')
+        .setDescription('the starting value of the roll, either a number, or "random"')
         .setRequired(true)
     )
     .addStringOption((option) =>
       option
         .setName('bet')
-        .setDescription('amount of :egg: to bet, can be 0')
+        .setDescription('amount of :egg: to bet, can be 0, or "all"')
         .setRequired(true)
     )
     .addBooleanOption((option) =>
@@ -97,7 +97,7 @@ module.exports = {
     if (roll <= 1 || bet < 0) {
       interaction.reply({
         content:
-          'To start the game, type `/droll [roll amount (default: 100)] [bet amount (default: 0)]`',
+          'To start the game, type `/roll [roll amount (default: 100)] [bet amount (default: 0)]`',
         ephemeral: true,
       });
       return;
@@ -175,7 +175,7 @@ module.exports = {
 
     if (roll <= 1 || bet < 0) {
       message.reply(
-        'To start the game, type `/droll [roll amount (default: 100)] [bet amount (default: 0)]`'
+        'To start the game, type `/roll [roll amount (default: 100)] [bet amount (default: 0)]`'
       );
     } else {
       const userInfo = await db.getUser(message.author.id, true);

@@ -87,7 +87,7 @@ function generateUserInfoEmbed(info, items, town, levelInfo) {
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName('eggstats')
+    .setName('stats')
     .addUserOption((option) =>
       option
         .setName('user')

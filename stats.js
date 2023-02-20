@@ -49,7 +49,7 @@ class Stats {
   registerCommands(game) {
     game.registerCommand('records', records);
     game.registerCommand('top', top);
-    game.registerCommand('eggstats', stats);
+    game.registerCommand('stats', stats);
   }
 
   async sync() {
